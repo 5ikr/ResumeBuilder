@@ -34,7 +34,7 @@ def parse_resume_text(text):
     email = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", text)
     if email:
         result["email"] = email.group()
-    for match in re.finditer(r"(?<!\w)\+?\d[\d ().-]*\d(?!\w)", text):
+    for match in re.finditer(r"(?<!\w)\+?\(?\d[\d ().-]*\d(?!\w)", text):
         phone = match.group().strip()
         if 10 <= len(re.sub(r"\D", "", phone)) <= 15:
             result["phone"] = phone

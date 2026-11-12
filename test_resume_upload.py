@@ -12,7 +12,7 @@ class ResumeUploadTest(unittest.TestCase):
             ("RESUME\nPranav Ramkumar\npranav@example.com\n+91 98765 43210", {
                 "full_name": "Pranav Ramkumar", "email": "pranav@example.com", "phone": "+91 98765 43210"}),
             ("Full Name: Ana O'Neil\nEmail: ana.oneil+work@example.co.uk\nPhone: (415) 555-1234", {
-                "full_name": "Ana O'Neil", "email": "ana.oneil+work@example.co.uk", "phone": "415) 555-1234"}),
+                "full_name": "Ana O'Neil", "email": "ana.oneil+work@example.co.uk", "phone": "(415) 555-1234"}),
             ("José García | jose@example.com\n2020 - 2024", {
                 "full_name": "José García", "email": "jose@example.com"}),
             ("Education\n2020 - 2024\nSkills", {}),
