@@ -20,3 +20,13 @@ class Education:
     start_date: str = ""
     end_date: str = ""
     details: str = ""
+
+
+@dataclass
+class Experience:
+    company: str = ""
+    job_title: str = ""
+    location: str = ""
+    start_date: str = ""
+    end_date: str = ""
+    achievements: str = ""
