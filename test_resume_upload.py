@@ -51,3 +51,53 @@ class ResumeUploadTest(unittest.TestCase):
         self.assertEqual(parse_resume_text(extract_resume_text(upload)), {
             "full_name": "Alex Smith", "email": "alex@example.com"
         })
+
+    def test_import_and_clear_forms(self):
+        app = AppTest.from_string(
+            "from pathlib import Path\n"
+            "import streamlit as st\n"
+            "from resume_upload import import_uploaded_resume\n"
+            "st.button('Import test file', key='test_import', "
+            "on_click=import_uploaded_resume, args=('incoming',))\n"
+            "exec(Path('app.py').read_text(encoding='utf-8'))\n"
+        ).run()
+        app.text_input(key="personal_full_name").input("Old Name").run()
+        app.text_input(key="personal_headline").input("Developer").run()
+        upload = BytesIO(b"Alex Smith\nalex@example.com\n+91 98765 43210")
+        upload.name = "resume.txt"
+        app.session_state["incoming"] = upload
+        app.button(key="test_import").click().run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.text_input(key="personal_full_name").value, "Alex Smith")
+        self.assertEqual(app.text_input(key="personal_email").value, "alex@example.com")
+        self.assertEqual(app.text_input(key="personal_phone").value, "+91 98765 43210")
+        self.assertEqual(app.text_input(key="personal_headline").value, "Developer")
+        app.text_input(key="personal_full_name").input("Edited Name").run()
+        app.sidebar.radio[0].set_value("Education").run()
+        app.button[1].click().run()
+        self.assertEqual(len(app.session_state["education"]), 1)
+        app.sidebar.radio[0].set_value("Personal Info").run()
+        self.assertEqual(app.text_input(key="personal_full_name").value, "Edited Name")
+
+        upload = BytesIO(b"updated@example.com")
+        upload.name = "updated.txt"
+        app.session_state["incoming"] = upload
+        app.button(key="test_import").click().run()
+        self.assertEqual(app.text_input(key="personal_full_name").value, "Edited Name")
+        self.assertEqual(app.text_input(key="personal_email").value, "updated@example.com")
+        upload = BytesIO(b"invalid pdf")
+        upload.name = "invalid.pdf"
+        app.session_state["incoming"] = upload
+        app.button(key="test_import").click().run()
+        self.assertTrue(app.sidebar.error)
+        self.assertEqual(app.text_input(key="personal_email").value, "updated@example.com")
+
+        app.sidebar.button(key="clear_data").click().run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.text_input(key="personal_full_name").value, "")
+        self.assertEqual(app.text_input(key="personal_email").value, "")
+        self.assertEqual(app.text_input(key="personal_phone").value, "")
+        self.assertEqual(app.session_state["education"], {})
+        self.assertEqual(app.session_state["experience"], {})
+        self.assertEqual(app.session_state["upload_version"], 1)
+        self.assertEqual(app.get("file_uploader")[0].proto.id.split("-")[-1], "resume_upload_1")
