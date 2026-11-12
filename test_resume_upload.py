@@ -34,3 +34,20 @@ class ResumeUploadTest(unittest.TestCase):
             upload.name = name
             with self.subTest(name=name), self.assertRaises(ValueError):
                 extract_resume_text(upload)
+
+    def test_pdf_text(self):
+        content = b"BT /F1 12 Tf 72 720 Td (Alex Smith) Tj 0 -20 Td (alex@example.com) Tj ET"
+        pdf = (
+            b"%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
+            b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
+            b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n"
+            b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n"
+            b"5 0 obj << /Length " + str(len(content)).encode() + b" >> stream\n" + content
+            + b"\nendstream endobj\ntrailer << /Root 1 0 R >>\n%%EOF"
+        )
+        upload = BytesIO(pdf)
+        upload.name = "resume.pdf"
+        self.assertEqual(parse_resume_text(extract_resume_text(upload)), {
+            "full_name": "Alex Smith", "email": "alex@example.com"
+        })
