@@ -1,5 +1,7 @@
 import streamlit as st
 
+from ui import personal_info_form
+
 
 st.set_page_config(page_title="Resume Builder", page_icon="📄", layout="wide")
 
@@ -17,3 +19,5 @@ editor, preview = st.columns([1, 1], gap="large")
 
 with editor:
     st.subheader(page)
+    if page == "Personal Info":
+        personal_info_form()
