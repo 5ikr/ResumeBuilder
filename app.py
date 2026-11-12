@@ -1,6 +1,7 @@
 import streamlit as st
 
 from preview import resume_markdown
+from resume_upload import import_uploaded_resume
 from ui import education_form, experience_form, personal_info_form
 
 
@@ -16,10 +17,15 @@ st.caption("Build your resume and watch the preview update as you type.")
 page = st.sidebar.radio(
     "Resume sections", ("Personal Info", "Education", "Experience", "Preview")
 )
-uploaded_resume = st.sidebar.file_uploader(
-    "Resume Upload", type=["pdf", "txt"], key="resume_upload"
+upload_key = f"resume_upload_{st.session_state.get('upload_version', 0)}"
+st.sidebar.file_uploader(
+    "Resume Upload", type=["pdf", "txt"], key=upload_key,
+    on_change=import_uploaded_resume, args=(upload_key,),
 )
 st.sidebar.caption("Import your name, email, and phone. Review the results before using them.")
+if "upload_message" in st.session_state:
+    level, message = st.session_state.upload_message
+    getattr(st.sidebar, level)(message)
 editor, preview = st.columns([1, 1], gap="large")
 
 with editor:
