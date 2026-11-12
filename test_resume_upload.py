@@ -21,3 +21,16 @@ class ResumeUploadTest(unittest.TestCase):
         for text, expected in cases:
             with self.subTest(text=text):
                 self.assertEqual(parse_resume_text(text), expected)
+
+    def test_text_files_and_bad_uploads(self):
+        for encoding in ("utf-8-sig", "utf-16"):
+            upload = BytesIO("José García\njose@example.com".encode(encoding))
+            upload.name = "resume.TXT"
+            upload.seek(5)
+            self.assertEqual(extract_resume_text(upload), "José García\njose@example.com")
+        for name, content in (("empty.txt", b"  "), ("bad.pdf", b"not a pdf"),
+                              ("bad.txt", b"\x80\x81"), ("resume.doc", b"Hello")):
+            upload = BytesIO(content)
+            upload.name = name
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                extract_resume_text(upload)
