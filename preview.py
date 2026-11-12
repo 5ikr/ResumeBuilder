@@ -1,3 +1,10 @@
+import re
+
+
+def plain_text(value):
+    return re.sub(r"([\\`*_{}\[\]()#+\-.!|>~])", r"\\\1", value.strip())
+
+
 def resume_markdown(personal_info, education, experience):
     lines = [f"# {personal_info.get('full_name') or 'Your name'}"]
     if personal_info.get("headline"):
