@@ -1,6 +1,6 @@
 import streamlit as st
 
-from ui import personal_info_form
+from ui import education_form, personal_info_form
 
 
 st.set_page_config(page_title="Resume Builder", page_icon="📄", layout="wide")
@@ -21,3 +21,5 @@ with editor:
     st.subheader(page)
     if page == "Personal Info":
         personal_info_form()
+    elif page == "Education":
+        education_form()
