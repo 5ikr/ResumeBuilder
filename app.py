@@ -16,6 +16,10 @@ st.caption("Build your resume and watch the preview update as you type.")
 page = st.sidebar.radio(
     "Resume sections", ("Personal Info", "Education", "Experience", "Preview")
 )
+uploaded_resume = st.sidebar.file_uploader(
+    "Resume Upload", type=["pdf", "txt"], key="resume_upload"
+)
+st.sidebar.caption("Import your name, email, and phone. Review the results before using them.")
 editor, preview = st.columns([1, 1], gap="large")
 
 with editor:
