@@ -1,5 +1,6 @@
 from io import BytesIO
 from pathlib import Path
+import re
 
 import pdfplumber
 
@@ -25,3 +26,33 @@ def extract_resume_text(uploaded_file):
     if not text.strip():
         raise ValueError("No text found. For scanned PDFs, upload a text version instead.")
     return text
+
+
+def parse_resume_text(text):
+    result = {}
+    email = re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", text)
+    if email:
+        result["email"] = email.group()
+    for match in re.finditer(r"(?<!\w)\+?\d[\d ().-]*\d(?!\w)", text):
+        phone = match.group().strip()
+        if 10 <= len(re.sub(r"\D", "", phone)) <= 15:
+            result["phone"] = phone
+            break
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    labeled_name = next(
+        (re.sub(r"^(?:full\s+)?name\s*:\s*", "", line, flags=re.I)
+         for line in lines if re.match(r"^(?:full\s+)?name\s*:", line, re.I)),
+        None,
+    )
+    headings = {"resume", "curriculum vitae", "cv", "personal info", "personal information",
+                "contact", "contact info", "contact information", "professional summary",
+                "summary", "education", "experience", "work experience", "skills"}
+    for line in ([labeled_name] if labeled_name else lines[:8]):
+        candidate = re.split(r"[|•]", line)[0].strip()
+        words = candidate.split()
+        if (candidate.lower() not in headings and 1 <= len(words) <= 5
+                and all(any(char.isalpha() for char in word) for word in words)
+                and all(char.isalpha() or char in " .'-’" for char in candidate)):
+            result["full_name"] = candidate
+            break
+    return result
