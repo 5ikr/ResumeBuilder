@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 
 import pdfplumber
+import streamlit as st
 
 
 def extract_resume_text(uploaded_file):
@@ -56,3 +57,24 @@ def parse_resume_text(text):
             result["full_name"] = candidate
             break
     return result
+
+
+def import_uploaded_resume(upload_key):
+    uploaded_file = st.session_state.get(upload_key)
+    st.session_state.pop("upload_message", None)
+    if uploaded_file is None:
+        return
+    try:
+        parsed = parse_resume_text(extract_resume_text(uploaded_file))
+    except ValueError as error:
+        st.session_state.upload_message = ("error", str(error))
+        return
+    if not parsed:
+        st.session_state.upload_message = ("warning", "No name, email, or phone found. Try another file.")
+        return
+    st.session_state.setdefault("personal_info", {}).update(parsed)
+    for field, value in parsed.items():
+        st.session_state[f"personal_{field}"] = value
+    st.session_state.upload_message = (
+        "success", "Imported " + ", ".join(field.replace("_", " ") for field in parsed) + ". Please review the results."
+    )
