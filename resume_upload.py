@@ -78,3 +78,9 @@ def import_uploaded_resume(upload_key):
     st.session_state.upload_message = (
         "success", "Imported " + ", ".join(field.replace("_", " ") for field in parsed) + ". Please review the results."
     )
+
+
+def clear_resume():
+    next_version = st.session_state.get("upload_version", 0) + 1
+    st.session_state.clear()
+    st.session_state.upload_version = next_version
