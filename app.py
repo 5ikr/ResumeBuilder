@@ -1,7 +1,7 @@
 import streamlit as st
 
 from preview import resume_markdown
-from resume_upload import import_uploaded_resume
+from resume_upload import clear_resume, import_uploaded_resume
 from ui import education_form, experience_form, personal_info_form
 
 
@@ -26,6 +26,7 @@ st.sidebar.caption("Import your name, email, and phone. Review the results befor
 if "upload_message" in st.session_state:
     level, message = st.session_state.upload_message
     getattr(st.sidebar, level)(message)
+st.sidebar.button("Clear Data", on_click=clear_resume, key="clear_data")
 editor, preview = st.columns([1, 1], gap="large")
 
 with editor:
