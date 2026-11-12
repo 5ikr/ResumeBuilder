@@ -32,7 +32,7 @@ class ResumeAppTest(unittest.TestCase):
 
         app.sidebar.radio[0].set_value("Preview").run()
         rendered = app.markdown[-1].value
-        for expected in ("builder@example.com", "Example University", "Developer", "Example Co", "- Built tools\n- Helped users"):
+        for expected in (r"builder@example\.com", "Example University", "Developer", "Example Co", "- Built tools\n- Helped users"):
             self.assertIn(expected, rendered)
         app.sidebar.radio[0].set_value("Personal Info").run()
         self.assertEqual(app.text_input(key="personal_full_name").value, "A *Builder*")
