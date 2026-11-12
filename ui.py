@@ -19,7 +19,9 @@ def personal_info_form():
     }
     for field, label in labels.items():
         widget = st.text_area if field == "summary" else st.text_input
-        data[field] = widget(label, value=data[field], key=f"personal_{field}")
+        key = f"personal_{field}"
+        st.session_state.setdefault(key, data[field])
+        data[field] = widget(label, key=key)
     st.session_state.personal_info = data
 
 
