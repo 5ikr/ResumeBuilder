@@ -6,6 +6,15 @@ def plain_text(value):
 
 
 def resume_markdown(personal_info, education, experience):
+    personal_info = {key: plain_text(value) for key, value in personal_info.items()}
+    education = {
+        key: {field: plain_text(value) for field, value in entry.items()}
+        for key, entry in education.items()
+    }
+    experience = {
+        key: {field: plain_text(value) for field, value in entry.items()}
+        for key, entry in experience.items()
+    }
     lines = [f"# {personal_info.get('full_name') or 'Your name'}"]
     if personal_info.get("headline"):
         lines.append(personal_info["headline"])
