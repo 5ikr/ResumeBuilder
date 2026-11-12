@@ -10,3 +10,13 @@ class PersonalInfo:
     location: str = ""
     website: str = ""
     summary: str = ""
+
+
+@dataclass
+class Education:
+    institution: str = ""
+    degree: str = ""
+    field_of_study: str = ""
+    start_date: str = ""
+    end_date: str = ""
+    details: str = ""
