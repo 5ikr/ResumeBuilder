@@ -19,7 +19,7 @@ degrees and jobs with the buttons. Put each job achievement on its own line.
 
 Data lives in `st.session_state` and survives navigation between sections during
 the current session. It is not saved to disk; reloading or disconnecting the
-session can clear it. PDF generation is not included.
+session can clear it. PDF export and JSON profile saving/loading are included.
 
 ## Resume Upload
 
@@ -43,3 +43,18 @@ python -m unittest -v
 
 The tests check live updates, navigation, multiple entries, removal, Markdown
 escaping, PDF and text extraction, contact parsing, import callbacks, and reset.
+
+
+## Export and saved profiles
+
+Use **Save Profile (JSON)** to download the current form data. Upload that file
+under **Load a saved profile** to restore all three sections.
+
+Choose a PDF colour theme, then select **Generate PDF** and download the result.
+The download stays available until the resume or theme changes. Generate again
+after editing. The current PDF font supports Latin-1 text; unsupported characters
+show an error instead of being silently replaced. Unicode fonts and OCR are not
+included.
+
+The integration tests also check profile loading, current JSON data, generated
+PDF text, download persistence, colour changes, invalid profiles, and clearing.
