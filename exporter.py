@@ -24,9 +24,11 @@ def clean_text(value):
 
         value = value.replace(old, new)
 
-    return value.encode(
-        "latin-1", "replace"
-    ).decode("latin-1").strip()
+    try:
+        value.encode("latin-1")
+    except UnicodeEncodeError as error:
+        raise ValueError("PDF export currently supports Latin-1 text only. Use a Latin spelling for unsupported characters.") from error
+    return value.strip()
 
 
 class ResumePDF(FPDF):
