@@ -174,7 +174,7 @@ st.sidebar.file_uploader(
 )
 
 st.sidebar.caption(
-    "Import your name, email, and phone. Review the results before using them."
+    "Import contact details, summary, Education, and Experience. Use section headings and separate entries with blank lines; review the forms after uploading."
 )
 
 if "upload_message" in st.session_state:

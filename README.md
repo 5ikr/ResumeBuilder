@@ -23,14 +23,23 @@ session can clear it. PDF export and JSON profile saving/loading are included.
 
 ## Resume Upload
 
-Upload a `.pdf` or `.txt` file in the sidebar to fill your name, email, and phone.
+Upload a `.pdf` or `.txt` file in the sidebar to fill your name, email, phone,
+summary, Education, and Experience.
 The app reads PDF text with pdfplumber and accepts UTF-8 or UTF-16 text files.
 Scanned PDFs need a text version; OCR is not included.
 
 The parser uses simple patterns, so review the imported values. It only updates
-fields it finds and keeps your other data. Education and Experience are entered
-manually. You can edit imported values without the upload overwriting them on
+fields it finds and keeps your other data. Recognized Education and Experience
+sections replace the existing entries in those sections. You can edit imported values without the upload overwriting them on
 each rerun. Uploading another file imports again.
+
+Use `Education` and `Experience` (or `Work Experience`) headings, with blank lines
+between entries. Labeled fields such as `Institution:`, `Degree:`, `Company:`,
+`Job title:`, `Start date:`, `End date:`, and `Achievements:` are supported.
+Unlabeled entries can list institution, degree, field, start date, end date, then
+details; jobs can list company, job title, location, start date, end date, then
+achievements. Date ranges such as `2020 - Present` also work. Complex PDF layouts
+may need manual corrections. Use JSON profiles for exact restoration of all fields.
 
 Use **Clear Data** to reset all forms, remove the uploaded file, and clear import
 messages. Files are read in memory and are not saved by the app.

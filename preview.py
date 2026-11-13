@@ -9,11 +9,11 @@ def resume_markdown(personal_info, education, experience):
     personal_info = {key: plain_text(value) for key, value in personal_info.items()}
     education = {
         key: {field: plain_text(value) for field, value in entry.items()}
-        for key, entry in education.items()
+        for key, entry in education.items() if any(value.strip() for value in entry.values())
     }
     experience = {
         key: {field: plain_text(value) for field, value in entry.items()}
-        for key, entry in experience.items()
+        for key, entry in experience.items() if any(value.strip() for value in entry.values())
     }
     lines = [f"# {personal_info.get('full_name') or 'Your name'}"]
     if personal_info.get("headline"):
@@ -35,7 +35,7 @@ def resume_markdown(personal_info, education, experience):
             lines.append(f"### {title or 'Degree'}")
             lines.append(entry["institution"])
             lines.append(" – ".join(filter(None, [entry["start_date"], entry["end_date"]])))
-            lines.append(entry["details"])
+            lines.append("  \n".join(entry["details"].splitlines()))
     if experience:
         lines.append("## Experience")
         for entry in experience.values():
@@ -43,7 +43,7 @@ def resume_markdown(personal_info, education, experience):
             lines.append(" · ".join(filter(None, [entry["company"], entry["location"]])))
             lines.append(" – ".join(filter(None, [entry["start_date"], entry["end_date"]])))
             lines.append("\n".join(
-                f"- {line.strip()}"
+                "- " + re.sub(r"^(?:\\?[-*]|•)\s+", "", line.strip())
                 for line in entry["achievements"].splitlines() if line.strip()
             ))
     return "\n\n".join(line for line in lines if line)
