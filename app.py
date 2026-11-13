@@ -191,29 +191,6 @@ st.sidebar.divider()
 
 st.sidebar.subheader("Save or Load Profile")
 
-profile_data = {
-    "format_version": 1,
-    "personal_info": st.session_state.personal_info,
-    "education": st.session_state.education,
-    "experience": st.session_state.experience
-}
-
-json_data = json.dumps(
-    profile_data,
-    indent=4,
-    ensure_ascii=False
-)
-
-st.sidebar.download_button(
-    label="Save Profile (JSON)",
-    data=json_data,
-    file_name="resume_profile.json",
-    mime="application/json",
-    key="save_profile_json",
-    use_container_width=True
-)
-
-
 # PERSON 3: JSON LOAD PROFILE
 
 st.sidebar.file_uploader(
@@ -310,6 +287,30 @@ with preview:
                 st.session_state.experience
             )
         )
+
+
+profile_data = {
+    "format_version": 1,
+    "personal_info": st.session_state.personal_info,
+    "education": st.session_state.education,
+    "experience": st.session_state.experience
+}
+
+json_data = json.dumps(
+    profile_data,
+    indent=4,
+    ensure_ascii=False
+)
+
+st.sidebar.download_button(
+    label="Save Profile (JSON)",
+    data=json_data,
+    file_name="resume_profile.json",
+    mime="application/json",
+    key="save_profile_json",
+    use_container_width=True
+)
+
 
 
 # PDF EXPORT
