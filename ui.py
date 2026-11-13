@@ -1,9 +1,14 @@
 from dataclasses import asdict
+from pathlib import Path
 from uuid import uuid4
 
 import streamlit as st
 
 from models import Education, Experience, PersonalInfo
+
+
+def apply_styles():
+    st.html(Path(__file__).with_name("styles.css"))
 
 
 def personal_info_form():

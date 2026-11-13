@@ -6,14 +6,16 @@ from exporter import generate_resume_pdf
 from models import Education, Experience, PersonalInfo
 from preview import resume_markdown
 from resume_upload import clear_resume, import_uploaded_resume
-from ui import education_form, experience_form, personal_info_form
+from ui import apply_styles, education_form, experience_form, personal_info_form
 
 
 st.set_page_config(
     page_title="Resume Builder",
-    page_icon="📄",
+    page_icon="R",
     layout="wide"
 )
+
+apply_styles()
 
 
 # SESSION STATE SETUP
@@ -146,11 +148,20 @@ def load_saved_profile(upload_key="json_profile_upload"):
 
 # PAGE HEADING
 
-st.title("Resume Builder")
-
-st.caption(
-    "Build your resume and watch the preview update as you type."
-)
+st.html('''
+<header class="masthead">
+  <div>
+    <div class="eyebrow">Resume Builder / Your working draft</div>
+    <h1>A clear record.<br>A considered next step.</h1>
+    <p class="intro">Put your experience on paper. Edit the details here, then take a finished resume with you.</p>
+  </div>
+  <div class="note">
+    <p class="edition">The workspace</p>
+    <p>Write on the left. Review on the right. Your draft updates as you go.</p>
+  </div>
+</header>
+''')
+st.sidebar.html('<div class="sidebar-brand">Resume Builder</div>')
 
 
 # SIDEBAR NAVIGATION
@@ -221,7 +232,7 @@ font_themes = {
 
     "Professional Blue": (30, 70, 130),
 
-    "Elegant Purple": (100, 60, 130),
+    "Burnt Amber": (160, 85, 35),
 
     "Forest Green": (35, 100, 65),
 
@@ -247,11 +258,12 @@ st.sidebar.button(
 
 # RESUME EDITOR AND LIVE PREVIEW
 
-editor, preview = st.columns([1, 1], gap="large")
+editor, preview = st.columns([.85, 1.25], gap="large")
 
 
 with editor:
 
+    st.caption("01 / EDIT YOUR DETAILS")
     st.subheader(page)
 
     if page == "Personal Info":
@@ -276,9 +288,10 @@ with editor:
 
 with preview:
 
+    st.caption("02 / REVIEW YOUR DRAFT")
     st.subheader("Live preview")
 
-    with st.container(border=True):
+    with st.container(border=True, key="resume_sheet"):
 
         st.markdown(
             resume_markdown(
@@ -318,6 +331,7 @@ st.sidebar.download_button(
 st.divider()
 
 st.subheader("Export Your Resume")
+st.caption("Check your draft, choose a print colour in the sidebar, and download your PDF.")
 
 
 if st.button("Generate PDF", type="primary"):
