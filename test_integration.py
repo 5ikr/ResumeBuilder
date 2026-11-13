@@ -14,7 +14,7 @@ class IntegrationTest(unittest.TestCase):
             "from pathlib import Path\n"
             "exec(Path('app.py').read_text(encoding='utf-8'))\n"
             "st.session_state['saved_json'] = json_data\n"
-            "st.button('Load test profile', key='load_test', on_click=load_saved_profile)\n"
+            "st.button('Load test profile', key='load_test', on_click=load_saved_profile, args=('incoming',))\n"
         ).run()
         app.text_input(key="personal_full_name").input("Latest Name").run()
         self.assertEqual(json.loads(app.session_state['saved_json'])['personal_info']['full_name'], 'Latest Name')
@@ -22,7 +22,7 @@ class IntegrationTest(unittest.TestCase):
                    'education': {'a': {'degree': 'BSc', 'institution': 'Example University'}},
                    'experience': {'b': {'job_title': 'Developer', 'company': 'Example Co'}}}
         upload = BytesIO(json.dumps(profile).encode())
-        app.session_state['json_profile_upload'] = upload
+        app.session_state['incoming'] = upload
         app.button(key='load_test').click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.text_input(key='personal_full_name').value, 'Alex Smith')
@@ -39,7 +39,7 @@ class IntegrationTest(unittest.TestCase):
         self.assertTrue(any(button.key == 'download_resume_pdf' for button in app.get('download_button')))
         app.sidebar.selectbox[0].select('Forest Green').run()
         self.assertNotIn('generated_pdf', app.session_state)
-        app.session_state['json_profile_upload'] = BytesIO(b'not json')
+        app.session_state['incoming'] = BytesIO(b'not json')
         app.button(key='load_test').click().run()
         self.assertTrue(app.sidebar.error)
         self.assertEqual(app.text_input(key='personal_full_name').value, 'Alex Smith')

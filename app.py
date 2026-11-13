@@ -81,9 +81,9 @@ def normalise_profile(data):
 
 # JSON PROFILE LOADING
 
-def load_saved_profile():
+def load_saved_profile(upload_key="json_profile_upload"):
 
-    uploaded_file = st.session_state.get("json_profile_upload")
+    uploaded_file = st.session_state.get(upload_key)
 
     if uploaded_file is None:
         return
