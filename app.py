@@ -345,14 +345,7 @@ if st.button("Generate PDF", type="primary"):
                 font_color=font_themes[selected_theme]
             )
 
-            st.download_button(
-                label="Download Resume as PDF",
-                data=pdf_bytes,
-                file_name="resume.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="download_resume_pdf"
-            )
+            st.session_state.generated_pdf = (pdf_bytes, json_data, selected_theme)
 
             st.success(
                 f"Your resume PDF is ready ({selected_theme})."
@@ -361,3 +354,11 @@ if st.button("Generate PDF", type="primary"):
         except Exception as error:
 
             st.error(f"PDF generation failed: {error}")
+
+if "generated_pdf" in st.session_state:
+    pdf_bytes, saved_data, saved_theme = st.session_state.generated_pdf
+    if (saved_data, saved_theme) == (json_data, selected_theme):
+        st.download_button("Download Resume as PDF", pdf_bytes, "resume.pdf",
+                           "application/pdf", key="download_resume_pdf")
+    else:
+        st.session_state.pop("generated_pdf", None)
