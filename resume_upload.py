@@ -8,6 +8,7 @@ import pdfplumber
 import streamlit as st
 
 from models import Education, Experience
+from profiles import ENTRY_MODELS
 
 
 def extract_resume_text(uploaded_file):
@@ -70,15 +71,20 @@ def resume_sections(text):
         "professional experience": "experience", "employment history": "experience",
         "experience": "experience", "summary": "summary",
         "professional summary": "summary", "profile": "summary",
+        "skills": "skills", "technical skills": "skills", "projects": "projects",
+        "certifications": "certifications", "achievements": "achievements",
+        "languages": "languages", "additional information": "additional",
     }
     sections = {"header": []}
     current = "header"
     for line in text.splitlines():
         heading = line.strip().strip("#*: ").lower()
-        if heading in aliases:
+        if heading == 'achievements' and current == 'experience' and line.strip().endswith(':'):
+            sections[current].append(line)
+        elif heading in aliases:
             current = aliases[heading]
             sections.setdefault(current, [])
-        elif heading in {"skills", "projects", "certifications", "references", "languages", "interests"}:
+        elif heading in {"references", "interests"}:
             current = "other"
             sections.setdefault(current, [])
         else:
@@ -152,6 +158,40 @@ def parse_entries(text, section):
     return entries
 
 
+def parse_new_entries(text, section):
+    """Conservative structured import: skills lists, or labeled records for new sections."""
+    entries = {}
+    if section == 'skills':
+        for line in text.splitlines():
+            category, sep, names = line.partition(':')
+            for name in re.split(r'[,|;]', names if sep else line):
+                name = name.strip().lstrip('-• ')
+                if name:
+                    entries[uuid4().hex] = dict(name=name, category=category.strip() if sep else 'Technical Skills', proficiency='')
+        return entries
+    aliases = {'project title': 'title', 'certification name': 'name', 'achievement title': 'title',
+               'issuing organization': 'issuer', 'technologies used': 'technologies',
+               'key contributions': 'contributions', 'project url': 'url', 'credential url': 'url'}
+    for block in re.split(r'\n\s*\n', text.strip()):
+        entry = asdict(ENTRY_MODELS[section]())
+        current = None
+        for line in block.splitlines():
+            label, separator, value = line.partition(':')
+            field = aliases.get(label.strip().lower(), label.strip().lower().replace(' ', '_'))
+            if separator and field in entry:
+                # Repeated titles begin another record even without a blank line.
+                if field in ('title', 'name') and entry[field]:
+                    entries[uuid4().hex] = entry
+                    entry = asdict(ENTRY_MODELS[section]())
+                entry[field] = value.strip()
+                current = field
+            elif current in ('description', 'contributions'):
+                entry[current] += '\n' + line.strip().lstrip('-• ')
+        if any(entry.values()) and (entry.get('title') or entry.get('name')):
+            entries[uuid4().hex] = entry
+    return entries
+
+
 def import_uploaded_resume(upload_key):
     uploaded_file = st.session_state.get(upload_key)
     st.session_state.pop("upload_message", None)
@@ -165,15 +205,20 @@ def import_uploaded_resume(upload_key):
             section: parse_entries(sections[section], section)
             for section in ("education", "experience") if section in sections
         }
+        imported_sections.update({section: parse_new_entries(sections[section], section)
+                                 for section in ('skills', 'projects', 'certifications', 'achievements') if section in sections})
         if sections.get("summary"):
             parsed["summary"] = sections["summary"]
     except ValueError as error:
         st.session_state.upload_message = ("error", str(error))
         return
-    if not parsed and not any(imported_sections.values()):
+    if not parsed and not any(imported_sections.values()) and not sections.get('languages'):
         st.session_state.upload_message = ("warning", "No resume fields found. Use clear Education and Experience headings.")
         return
     st.session_state.setdefault("personal_info", {}).update(parsed)
+    if sections.get('languages'):
+        st.session_state.setdefault('additional', {})['languages'] = sections['languages']
+        st.session_state['additional_languages'] = sections['languages']
     for field, value in parsed.items():
         st.session_state[f"personal_{field}"] = value
     for section, entries in imported_sections.items():
@@ -184,6 +229,7 @@ def import_uploaded_resume(upload_key):
             st.session_state[section] = entries
     imported = list(parsed) + [f"{len(entries)} {section} entries" for section, entries in imported_sections.items() if entries]
     skipped = [section for section, entries in imported_sections.items() if not entries and sections[section]]
+    skipped += [section for section in ('additional',) if sections.get(section)]
     st.session_state.upload_message = (
         "warning" if skipped else "success",
         "Imported " + ", ".join(field.replace("_", " ") for field in imported)

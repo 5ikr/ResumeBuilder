@@ -200,6 +200,8 @@ Python, SQL
         self.assertEqual(app.text_input(key="personal_email").value, "updated@example.com")
 
         app.sidebar.button(key="clear_data").click().run()
+        self.assertEqual(app.text_input(key="personal_full_name").value, "Edited Name")
+        app.button(key="confirm_clear").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.text_input(key="personal_full_name").value, "")
         self.assertEqual(app.text_input(key="personal_email").value, "")

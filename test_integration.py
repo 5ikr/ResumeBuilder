@@ -44,6 +44,8 @@ class IntegrationTest(unittest.TestCase):
         self.assertTrue(app.sidebar.error)
         self.assertEqual(app.text_input(key='personal_full_name').value, 'Alex Smith')
         app.sidebar.button(key='clear_data').click().run()
+        self.assertEqual(app.text_input(key='personal_full_name').value, 'Alex Smith')
+        app.button(key='confirm_clear').click().run()
         self.assertEqual(app.text_input(key='personal_full_name').value, '')
         self.assertEqual(app.session_state['education'], {})
         self.assertFalse(app.exception)
