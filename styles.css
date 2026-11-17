@@ -130,3 +130,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent) !import
 @media (prefers-reduced-motion: no-preference) {
   button { transition: border-color .15s ease, background-color .15s ease; }
 }
+
+.workflow-strip { display:flex; gap:1.8rem; border-bottom:1px solid #e5e2db; padding:0 0 1rem; margin-bottom:2rem; color:#736d63; font-size:.85rem; }
+.workflow-strip .current { color:#a44425; font-weight:600; }
+[data-testid="stVerticalBlock"]:has(.template-marker.editorial) .st-key-resume_sheet h1 { text-align:center; color:#273e4e; border-bottom:0; }
+[data-testid="stVerticalBlock"]:has(.template-marker.editorial) .st-key-resume_sheet h2 { color:#273e4e; border-top:0; font-family:Georgia,serif !important; font-size:1rem !important; letter-spacing:.03em; }
+[data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet { padding:1.6rem !important; }
+[data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet h1,
+[data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet h3 { font-family:"Segoe UI",Arial,sans-serif !important; }
+[data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet h2 { margin-top:.8rem; padding-top:.5rem; }
+[data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet p,
+[data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet li { font-size:.8rem; line-height:1.45; }
+@media(max-width:600px) { .workflow-strip { gap:.65rem; font-size:.72rem; } }

@@ -75,3 +75,9 @@ Install `requirements.txt`, then run `python -m streamlit run app.py`. For optio
 - Font coverage is Latin/Greek/Cyrillic rather than every Unicode script. CJK, Indic shaping, RTL, and emoji need additional fonts/layout work; unsupported glyphs are reported explicitly.
 - No charts/proficiency bars, decorative multi-column resumes, or framework migration: readable single-column output and compatibility take priority.
 - Profile JSON exports the selected resume; an entire multi-profile workspace archive and persistent history are deferred to avoid unnecessary storage complexity.
+
+## Workflow and style follow-up (2026-11-14)
+
+The workspace now uses Edit resume → AI Studio → Preview & export. AI provider/model settings, shared style/length preferences, summary generation, targeted rewrites, whole-resume polishing, and job matching live together in AI Studio. Editing forms contain no AI panels. Continue/Skip controls guide the next step; PDF design, colour and downloads are together in the final step. Provider/model and writing preferences survive navigation.
+
+Added Confident, Student / Entry-level, Career Change, and Plain English tones with distinct prompting guidance. Added Editorial and Compact Professional PDF/preview styles. All five styles share definitions in `resume_styles.py`; template choices remain JSON-compatible. New modules include `ai_studio.py`, `test_navigation.py`, and `test_workflow.py`. Existing workflow tests were adapted to the new navigation without removing their assertions. Tests cover no automatic requests, provider/model/tone persistence, apply/undo workflows, all five Unicode PDFs and long-text bounds. Both new styles were rasterized and visually reviewed.

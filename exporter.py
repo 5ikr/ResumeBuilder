@@ -3,6 +3,7 @@ from pathlib import Path
 from fpdf import FPDF
 from preview import resume_blocks, safe_link
 from profiles import normalise_profile
+from resume_styles import RESUME_STYLES
 
 FONT_DIR = Path(__file__).parent / 'assets' / 'fonts'
 
@@ -22,28 +23,29 @@ class ResumePDF(FPDF):
 def generate_resume_pdf(personal_info, education, experience, font_color=(40, 40, 40), **extra):
     profile = normalise_profile(dict(personal_info=personal_info, education=education, experience=experience, **extra))
     template = profile['settings']['template']
+    design = RESUME_STYLES[template]
     try:
         r, g, b = font_color
         rgb = tuple(max(0, min(255, int(c))) for c in (r, g, b))
     except (TypeError, ValueError, OverflowError):
         rgb = (40, 40, 40)
     pdf = ResumePDF(format='A4')
-    pdf.set_margins(19 if template != 'Technical Resume' else 16, 17, 19 if template != 'Technical Resume' else 16)
+    pdf.set_margins(design['margin'], 17, design['margin'])
     pdf.set_auto_page_break(True, 19)
-    family = 'NotoSerif' if template == 'Classic Professional' else 'NotoSans'
+    family = design['font']
     for style, suffix in (('', 'Regular'), ('B', 'Bold')):
         pdf.add_font('Resume', style, str(FONT_DIR / f'{family}-{suffix}.ttf'))
     pdf.add_page()
     pdf.set_title(f"{personal_info.get('full_name', 'Resume')} - Resume")
     pdf.set_author(personal_info.get('full_name', ''))
-    compact = template == 'Technical Resume'
-    leading = 4.2 if compact else 4.6
+    compact = design['compact']
+    leading = design['leading']
     blocks = resume_blocks(profile)
     for block in blocks:
         text = clean_text(block.text)
         style, size = '', 9.5
         if block.kind == 'name':
-            style, size = 'B', 23 if template != 'Technical Resume' else 21
+            style, size = 'B', design['name_size']
         elif block.kind == 'headline':
             size = 11
         elif block.kind == 'section':
@@ -66,8 +68,8 @@ def generate_resume_pdf(personal_info, education, experience, font_color=(40, 40
         unsupported = {c for c in text if not c.isspace() and ord(c) not in cmap}
         if unsupported:
             raise ValueError('The bundled font does not cover these characters: ' + ' '.join(sorted(unsupported)) + '. Use supported text or configure an appropriate font.')
-        accent = template == 'Modern Minimal' and block.kind in ('name', 'section')
-        pdf.set_text_color(*(rgb if not accent else (164, 68, 37)))
+        accent = design['accent'] if block.kind in ('name', 'section') else None
+        pdf.set_text_color(*(accent or rgb))
         indent = 5 if block.kind == 'bullet' else 0
         if block.kind == 'bullet':
             if pdf.will_page_break(leading):
@@ -93,9 +95,11 @@ def generate_resume_pdf(personal_info, education, experience, font_color=(40, 40
         longest = max(text.split(), key=len, default='')
         wrapmode = 'CHAR' if pdf.get_string_width(longest) > pdf.epw - indent else 'WORD'
         pdf.multi_cell(pdf.epw - indent, max(leading, size * .3), text, link=link,
-                       new_x='LMARGIN', new_y='NEXT', wrapmode=wrapmode)
+                       new_x='LMARGIN', new_y='NEXT', wrapmode=wrapmode,
+                       align='C' if design['centered'] and block.kind in ('name', 'headline') else 'L')
         if block.kind == 'section':
             pdf.set_draw_color(205, 200, 190)
-            pdf.line(pdf.l_margin, pdf.get_y() + .8, pdf.w - pdf.r_margin, pdf.get_y() + .8)
+            if design['rules']:
+                pdf.line(pdf.l_margin, pdf.get_y() + .8, pdf.w - pdf.r_margin, pdf.get_y() + .8)
             pdf.ln(2)
     return bytes(pdf.output())

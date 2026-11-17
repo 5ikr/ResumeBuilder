@@ -1,3 +1,4 @@
+from test_navigation import navigate, open_summary_rewrite
 from io import BytesIO
 import unittest
 import pdfplumber
@@ -62,15 +63,16 @@ Built ETL pipelines.
         self.assertEqual(len(app.session_state['experience']), 2)
         for value in ('Example University', 'Sample College', 'Senior Python Engineer', 'Built ETL pipelines'):
             self.assertIn(value, app.markdown[-1].value)
-        app.sidebar.radio[0].set_value('Education').run()
+        navigate(app, 'Education')
         entry = next(iter(app.session_state['education']))
         self.assertEqual(app.text_input(key=f'education_{entry}_degree').value, 'MSc')
         app.text_input(key=f'education_{entry}_institution').input('Edited University').run()
         self.assertIn('Edited University', app.markdown[-1].value)
-        app.sidebar.radio[0].set_value('Experience').run()
+        navigate(app, 'Experience')
         job = next(iter(app.session_state['experience']))
         self.assertEqual(app.text_input(key=f'experience_{job}_job_title').value, 'Senior Python Engineer')
         app.text_input(key=f'experience_{job}_company').input('Edited Company').run()
+        navigate(app, 'Preview')
         next(button for button in app.button if button.label == 'Generate PDF').click().run()
         with pdfplumber.open(BytesIO(app.session_state['generated_pdf'][0])) as pdf:
             rendered = '\n'.join(page.extract_text() for page in pdf.pages)
@@ -180,10 +182,10 @@ Python, SQL
         self.assertEqual(app.text_input(key="personal_phone").value, "+91 98765 43210")
         self.assertEqual(app.text_input(key="personal_headline").value, "Developer")
         app.text_input(key="personal_full_name").input("Edited Name").run()
-        app.sidebar.radio[0].set_value("Education").run()
+        navigate(app, "Education")
         app.button[1].click().run()
         self.assertEqual(len(app.session_state["education"]), 1)
-        app.sidebar.radio[0].set_value("Personal Info").run()
+        navigate(app, "Personal Info")
         self.assertEqual(app.text_input(key="personal_full_name").value, "Edited Name")
 
         upload = BytesIO(b"updated@example.com")

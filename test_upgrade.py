@@ -1,3 +1,4 @@
+from test_navigation import navigate, open_summary_rewrite
 """Regression coverage for the integrated upgrade. All AI calls are mocked."""
 from copy import deepcopy
 from dataclasses import asdict
@@ -265,14 +266,14 @@ class UpgradeUITest(unittest.TestCase):
 
     def test_skills_crud_navigation_and_json(self):
         app = self.app()
-        app.sidebar.radio[0].set_value('Skills').run()
+        navigate(app, 'Skills')
         next(b for b in app.button if b.label == 'Add skill').click().run()
         key = next(iter(app.session_state['skills']))
         app.text_input(key=f'skills_{key}_name').input('Python').run()
         app.text_input(key=f'skills_{key}_category').input('Languages').run()
         self.assertIn('Python', app.markdown[-1].value)
-        app.sidebar.radio[0].set_value('Preview').run()
-        app.sidebar.radio[0].set_value('Skills').run()
+        navigate(app, 'Preview')
+        navigate(app, 'Skills')
         self.assertEqual(app.text_input(key=f'skills_{key}_name').value, 'Python')
         app.text_input(key=f'skills_{key}_name').input('Rust').run()
         self.assertIn('Rust', app.markdown[-1].value)
@@ -282,7 +283,7 @@ class UpgradeUITest(unittest.TestCase):
     def test_projects_certifications_and_achievements(self):
         app = self.app()
         for section, name_field, value in [('projects', 'title', 'Resume tool'), ('certifications', 'name', 'Fundamentals'), ('achievements', 'title', 'Showcase')]:
-            app.sidebar.radio[0].set_value(section.title()).run()
+            navigate(app, section.title())
             next(b for b in app.button if b.label.startswith('Add ')).click().run()
             key = next(iter(app.session_state[section]))
             app.text_input(key=f'{section}_{key}_{name_field}').input(value).run()
@@ -292,7 +293,7 @@ class UpgradeUITest(unittest.TestCase):
     def test_template_visibility_and_clear_cancel(self):
         app = self.app()
         app.text_input(key='personal_full_name').input('Alex').run()
-        app.sidebar.radio[0].set_value('Preview').run()
+        navigate(app, 'Preview')
         app.selectbox(key='layout_template').select('Technical Resume').run()
         self.assertEqual(app.session_state['settings']['template'], 'Technical Resume')
         app.sidebar.button(key='clear_data').click().run()
@@ -307,10 +308,11 @@ class UpgradeUITest(unittest.TestCase):
         from ai_service import Suggestion
         app = self.app()
         app.text_area(key='personal_summary').input('Built Python tools').run()
+        open_summary_rewrite(app)
         with patch('ai_ui.improve', return_value=Suggestion('Developed Python tools.')) as mocked:
             app.run()
             mocked.assert_not_called()
-            app.checkbox(key='ai_consent_personal_summary').check().run()
+
             app.button(key='ai_generate_personal_summary').click().run()
             self.assertEqual(app.text_area(key='personal_summary').value, 'Built Python tools')
             app.button(key='ai_accept_personal_summary').click().run()
@@ -332,21 +334,10 @@ class UpgradeUITest(unittest.TestCase):
         self.assertIn('English', app.markdown[-1].value)
         self.assertFalse(app.exception)
 
-    def test_undo_redo_and_duplicate_switch_in_ui(self):
+    def test_workspace_history_panel_removed(self):
         app = self.app()
-        app.text_input(key='personal_full_name').input('Alex').run()
-        app.text_input(key='personal_headline').input('Developer').run()
-        next(b for b in app.button if b.label == 'Undo').click().run()
-        self.assertEqual(app.text_input(key='personal_headline').value, '')
-        next(b for b in app.button if b.label == 'Redo').click().run()
-        self.assertEqual(app.text_input(key='personal_headline').value, 'Developer')
-        app.text_input(key='new_profile_name').input('Role B').run()
-        next(b for b in app.button if b.label == 'Duplicate resume').click().run()
-        app.text_input(key='personal_headline').input('Engineer').run()
-        next(s for s in app.selectbox if s.label == 'Active profile').select('My resume').run()
-        self.assertEqual(app.text_input(key='personal_headline').value, 'Developer')
-        next(s for s in app.selectbox if s.label == 'Active profile').select('Role B').run()
-        self.assertEqual(app.text_input(key='personal_headline').value, 'Engineer')
+        self.assertFalse(any(e.label == 'Workspace & history' for e in app.expander))
+        self.assertFalse(any(b.label in ('Undo', 'Redo', 'Duplicate resume') for b in app.button))
         self.assertFalse(app.exception)
 
     def test_project_reorder_and_json_restores_every_section(self):
@@ -355,7 +346,7 @@ class UpgradeUITest(unittest.TestCase):
         app.session_state['incoming'] = BytesIO(json.dumps(p).encode())
         app.button(key='load_test').click().run()
         self.assertEqual(json.loads(app.session_state['saved_json']), p)
-        app.sidebar.radio[0].set_value('Projects').run()
+        navigate(app, 'Projects')
         next(b for b in app.button if b.label == 'Add project').click().run()
         keys = list(app.session_state['projects'])
         app.button(key=f'projects_{keys[1]}_move-1').click().run()
@@ -365,13 +356,13 @@ class UpgradeUITest(unittest.TestCase):
     def test_summary_generation_uses_evidence_and_requires_acceptance(self):
         from ai_service import Suggestion
         app = self.app()
-        app.sidebar.radio[0].set_value('Professional Summary').run()
+        navigate(app, 'Summary assistant')
         self.assertTrue(app.button(key='ai_generate_personal_summary').disabled)
-        app.sidebar.radio[0].set_value('Personal Info').run()
+        navigate(app, 'Personal Info')
         app.text_input(key='personal_headline').input('Python developer').run()
         app.text_input(key='personal_email').input('private@example.com').run()
-        app.sidebar.radio[0].set_value('Professional Summary').run()
-        app.checkbox(key='ai_consent_personal_summary').check().run()
+        navigate(app, 'Summary assistant')
+
         with patch('ai_ui.improve', return_value=Suggestion('Python developer.')) as mock:
             app.button(key='ai_generate_personal_summary').click().run()
         request = mock.call_args.args[0]
@@ -386,7 +377,7 @@ class UpgradeUITest(unittest.TestCase):
     def test_local_job_analyzer_ui_and_stale_result(self):
         app = self.app()
         app.text_area(key='personal_summary').input('Python developer').run()
-        app.sidebar.radio[0].set_value('Review & Match').run()
+        navigate(app, 'Review & Match')
         app.text_area(key='job_description').input('Python and Docker required').run()
         next(b for b in app.button if b.label == 'Analyze job description').click().run()
         self.assertEqual(app.session_state['job_analysis'][2]['coverage'], 50)

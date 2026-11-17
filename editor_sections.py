@@ -6,6 +6,7 @@ from models import AdditionalInfo
 from profiles import ENTRY_MODELS, add_entry, move_entry, snapshot, SECTIONS, TEMPLATES
 from analysis_tools import analyze_job, quality_check
 from ai_ui import writing_controls
+from resume_styles import STYLE_DESCRIPTIONS
 
 LABELS = {
     'skills': {'name': 'Skill', 'category': 'Category (custom categories welcome)', 'proficiency': 'Proficiency (optional)'},
@@ -34,8 +35,6 @@ def section_editor(section):
                 st.session_state.setdefault(key, data[field])
                 widget = st.text_area if field in ('description', 'contributions') else st.text_input
                 data[field] = widget(label, key=key)
-                if field in ('description', 'contributions', 'name') and section != 'certifications':
-                    writing_controls(key, data, field, section, context=json.dumps(data, ensure_ascii=False))
             actions = st.columns(3)
             if actions[0].button('Remove ' + singular, key=f'remove_{section}_{entry_id}'):
                 del entries[entry_id]
@@ -47,7 +46,7 @@ def section_editor(section):
                     st.rerun()
 
 
-def summary_editor():
+def summary_editor(assistant=False):
     info = st.session_state.personal_info
     key = 'personal_summary'
     st.session_state.setdefault(key, info['summary'])
@@ -59,8 +58,9 @@ def summary_editor():
                 for s in ENTRY_MODELS}
     evidence['headline'] = profile['personal_info']['headline']
     evidence['summary'] = info['summary']
-    writing_controls(key, info, 'summary', 'professional summary', summary=True,
-                     context=json.dumps(evidence, ensure_ascii=False, indent=2) if any(evidence.values()) else '')
+    if assistant:
+        writing_controls(key, info, 'summary', 'professional summary', summary=True,
+                         context=json.dumps(evidence, ensure_ascii=False, indent=2) if any(evidence.values()) else '')
 
 
 def additional_editor():
@@ -76,6 +76,7 @@ def layout_editor():
     settings = st.session_state.settings
     st.caption('Choose how your resume reads on screen and in print.')
     settings['template'] = st.selectbox('Resume template', TEMPLATES, index=TEMPLATES.index(settings['template']), key='layout_template')
+    st.caption(STYLE_DESCRIPTIONS[settings['template']])
     settings['student_mode'] = st.checkbox('Student / entry-level emphasis', value=settings['student_mode'], key='layout_student')
     settings['hidden_sections'] = st.multiselect('Hide optional sections', SECTIONS, default=settings['hidden_sections'], key='layout_hidden')
     with st.expander('Section order'):

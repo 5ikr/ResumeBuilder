@@ -1,4 +1,5 @@
 from io import BytesIO
+from test_navigation import navigate
 import json
 import unittest
 
@@ -27,6 +28,7 @@ class IntegrationTest(unittest.TestCase):
         self.assertFalse(app.exception)
         self.assertEqual(app.text_input(key='personal_full_name').value, 'Alex Smith')
         self.assertIn('Example University', app.markdown[-1].value)
+        navigate(app, 'Preview')
         next(button for button in app.button if button.label == 'Generate PDF').click().run()
         self.assertFalse(app.exception)
         self.assertIn('generated_pdf', app.session_state)
@@ -37,8 +39,9 @@ class IntegrationTest(unittest.TestCase):
             self.assertIn(expected, text)
         app.run()
         self.assertTrue(any(button.key == 'download_resume_pdf' for button in app.get('download_button')))
-        app.sidebar.selectbox[0].select('Forest Green').run()
+        app.selectbox(key='pdf_font_theme').select('Forest Green').run()
         self.assertNotIn('generated_pdf', app.session_state)
+        navigate(app, 'Personal Info')
         app.session_state['incoming'] = BytesIO(b'not json')
         app.button(key='load_test').click().run()
         self.assertTrue(app.sidebar.error)

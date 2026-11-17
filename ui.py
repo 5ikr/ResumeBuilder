@@ -5,7 +5,6 @@ from uuid import uuid4
 import streamlit as st
 
 from models import Education, Experience, PersonalInfo
-from ai_ui import writing_controls
 
 
 def apply_styles():
@@ -28,9 +27,6 @@ def personal_info_form():
         key = f"personal_{field}"
         st.session_state.setdefault(key, data[field])
         data[field] = widget(label, key=key)
-        if field == "summary":
-            st.session_state.personal_info = data
-            writing_controls(key, data, field, "professional summary")
     st.session_state.personal_info = data
 
 
@@ -60,7 +56,6 @@ def education_form():
                     label, value=data[field], key=f"education_{entry_id}_{field}"
                 )
             entries[entry_id] = asdict(Education(**data))
-            writing_controls(f"education_{entry_id}_details", entries[entry_id], "details", "education")
 
 
 def experience_form():
@@ -89,4 +84,3 @@ def experience_form():
                     label, value=data[field], key=f"experience_{entry_id}_{field}"
                 )
             entries[entry_id] = asdict(Experience(**data))
-            writing_controls(f"experience_{entry_id}_achievements", entries[entry_id], "achievements", "experience")

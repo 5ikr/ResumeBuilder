@@ -2,6 +2,7 @@
 from copy import deepcopy
 from dataclasses import asdict
 from uuid import uuid4
+from resume_styles import RESUME_STYLES
 
 from models import (PersonalInfo, Education, Experience, Skill, Project,
                     Certification, Achievement, AdditionalInfo)
@@ -10,7 +11,7 @@ ENTRY_MODELS = dict(education=Education, experience=Experience, skills=Skill,
                     projects=Project, certifications=Certification, achievements=Achievement)
 SECTIONS = ['summary', 'education', 'experience', 'skills', 'projects',
             'certifications', 'achievements', 'additional']
-TEMPLATES = ['Classic Professional', 'Modern Minimal', 'Technical Resume']
+TEMPLATES = list(RESUME_STYLES)
 DATA_KEYS = ['personal_info', *ENTRY_MODELS, 'additional', 'settings']
 
 
