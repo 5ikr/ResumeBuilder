@@ -30,13 +30,16 @@ The warm light workspace uses serif headings, restrained terracotta accents, ref
 
 Choose **Preview & export → Resume template**:
 
-1. **Classic Professional**: a single column with traditional serif typography and section rules.
-2. **Modern Minimal**: sans-serif typography with restrained accent headings.
-3. **Technical Resume**: a compact layout that brings skills and projects forward.
-4. **Editorial**: centered serif name, navy headings, and open spacing without section rules.
-5. **Compact Professional**: tight sans-serif spacing with the standard section order.
+1. **Word Template** (default): the supplied two-column Word layout, adapted to profile, skills, contact details, experience, education, projects, and additional resume sections.
+2. **Classic Professional**: a single column with traditional serif typography and section rules.
+3. **Modern Minimal**: sans-serif typography with restrained accent headings.
+4. **Technical Resume**: a compact layout that brings skills and projects forward.
+5. **Editorial**: centered serif name, navy headings, and open spacing without section rules.
+6. **Compact Professional**: tight sans-serif spacing with the standard section order.
 
-The template affects preview styling, section order, and PDF typography/spacing. **Student / entry-level emphasis** prioritizes education, skills, and projects. Hide optional sections and move sections up/down in Preview. Technical and student modes pin their priority sections before applying your remaining custom order. Empty sections stay off the resume.
+The Word template retains its two-column structure and section order; hide optional sections as needed. Its PDF uses Microsoft Word on Windows to preserve the supplied layout. The other templates use the built-in PDF renderer; **Student / entry-level emphasis** prioritizes education, skills, and projects. Hide optional sections and move sections up/down in those templates. Empty sections stay off the resume.
+
+Choose one of three coordinated color themes: Evergreen, Navy, or Burgundy. Each theme sets resume text, headings and dividers, and the template's tinted panel. The default Word-template export requires Microsoft Word on Windows and the Windows dependency installed from `requirements.txt`.
 
 The browser preview represents resume content and hierarchy; the PDF is the print layout, with its own measured wrapping and pagination. PDF exports support multiple pages, long links, bullet lists, page numbers, clickable email and supported HTTP(S) links, and selectable text colours. A generated download remains available until content, layout, or colour changes.
 
@@ -46,9 +49,9 @@ Noto Sans and Noto Serif fonts are bundled under the SIL Open Font License in `a
 
 Everything autosaves **within the current Streamlit session only**. Navigation preserves edits. Restarting the server, losing the session, or reloading can clear data. Use **Save Profile (JSON)** for a durable local backup.
 
-Version 2 JSON profiles include all sections, template, visibility, section order, and student mode. Existing version 1 profiles continue loading with empty defaults for new sections. Profile validation completes before replacing current data. Unknown fields are ignored; unsupported future format versions are rejected.
+Version 2 JSON profiles include all sections, template, color theme, visibility, section order, and student mode. Existing version 1 profiles continue loading with empty defaults for new sections. Profile validation completes before replacing current data. Unknown fields are ignored; unsupported future format versions are rejected.
 
-In **Workspace & history**, duplicate a resume under a new name and switch between independent profiles. **Undo / Redo** keeps up to 40 snapshots of content/layout changes in this session. A new edit after Undo clears the redo stack. Imported profiles can also be undone. AI suggestions and PDF bytes are not included in exported JSON or history. Download each named profile separately; JSON contains the selected resume, not the entire workspace. PDF colour is a workspace preference.
+In **Workspace & history**, duplicate a resume under a new name and switch between independent profiles. **Undo / Redo** keeps up to 40 snapshots of content/layout changes in this session. A new edit after Undo clears the redo stack. Imported profiles can also be undone. AI suggestions and PDF bytes are not included in exported JSON or history. Download each named profile separately; JSON contains the selected resume, not the entire workspace. Template and color theme are stored with the resume profile.
 
 **Clear Data** asks for confirmation before clearing the entire session, including all profiles, history, imports, and generated downloads. Individual entry removal is recoverable with Undo.
 
@@ -152,7 +155,7 @@ python -m unittest -v
 python -m compileall -q app.py models.py ui.py profiles.py preview.py exporter.py resume_upload.py ai_service.py ai_ui.py analysis_tools.py editor_sections.py
 ```
 
-The suite covers existing workflows, new entry editing/removal/reordering, session navigation, complete and legacy profiles, atomic invalid imports, named profiles/history, mocked AI success/failure/consent/validation, local analysis, all five templates, Unicode/link extraction, multi-page wrapping and content bounds, import feedback, and confirmed reset. Two original reset tests now explicitly confirm the destructive action before asserting cleared state.
+The suite covers existing workflows, new entry editing/removal/reordering, session navigation, complete and legacy profiles, atomic invalid imports, named profiles/history, mocked AI success/failure/consent/validation, local analysis, all resume templates, Unicode/link extraction, multi-page wrapping and content bounds, import feedback, and confirmed reset. Two original reset tests now explicitly confirm the destructive action before asserting cleared state.
 
 See `UPGRADE_NOTES.md` for implementation files, validation evidence, and deliberate limits. Generated samples and validation output belong under ignored `samples/` and `output/`, never in commits.
 
@@ -170,7 +173,7 @@ The service sends bounded batches and shows progress; a large resume may require
 
 1. **Edit resume**: import a resume or JSON profile, choose a section from the section selector, and enter or update your information. AI controls no longer clutter editing forms.
 2. **AI**: all provider/model settings, shared tone/length controls, whole-resume polishing, summary generation, individual field rewrites, quality checks, and Job Match Analyzer live here. Suggestions always require consent and review. Provider/model and tone/length selections survive navigation.
-3. **Preview & export**: choose one of five resume styles, set PDF text colour, hide/reorder sections, choose student emphasis, and generate your PDF. Template choices affect both preview and PDF and are included in JSON profiles.
+3. **Preview & export**: choose the supplied Word layout or a built-in style, select a coordinated color theme, hide sections, and generate your PDF. Template and theme choices are included in JSON profiles.
 
 Use the Continue button to move forward, or Skip AI and preview when you prefer manual writing. You can return to any step using the three-item sidebar. The last editing section is remembered. Writing preferences remain separate from resume data and are not exported with candidate profiles. No API request is triggered by navigating between steps.
 

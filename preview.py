@@ -35,6 +35,9 @@ def resume_blocks(profile):
         if text.strip():
             blocks.append(Block(kind, text.strip(), safe_link(link)))
     order = list(settings['section_order'])
+    if settings['template'] == 'Word Template':
+        order = ['summary', 'skills', 'experience', 'education', 'projects',
+                 'certifications', 'achievements', 'additional']
     if settings['template'] == 'Technical Resume':
         order = ['summary', 'skills', 'projects'] + [s for s in order if s not in ('summary', 'skills', 'projects')]
     if settings['student_mode']:

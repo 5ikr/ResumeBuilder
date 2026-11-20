@@ -7,6 +7,7 @@ from profiles import ENTRY_MODELS, add_entry, move_entry, snapshot, SECTIONS, TE
 from analysis_tools import analyze_job, quality_check
 from ai_ui import writing_controls
 from resume_styles import STYLE_DESCRIPTIONS
+from resume_themes import RESUME_THEMES
 
 LABELS = {
     'skills': {'name': 'Skill', 'category': 'Category (custom categories welcome)', 'proficiency': 'Proficiency (optional)'},
@@ -77,18 +78,29 @@ def layout_editor():
     st.caption('Choose how your resume reads on screen and in print.')
     settings['template'] = st.selectbox('Resume template', TEMPLATES, index=TEMPLATES.index(settings['template']), key='layout_template')
     st.caption(STYLE_DESCRIPTIONS[settings['template']])
-    settings['student_mode'] = st.checkbox('Student / entry-level emphasis', value=settings['student_mode'], key='layout_student')
+    settings['theme'] = st.selectbox('Resume color theme', list(RESUME_THEMES),
+                                     index=list(RESUME_THEMES).index(settings['theme']), key='layout_color_theme')
+    colors = RESUME_THEMES[settings['theme']]
+    if settings['template'] == 'Word Template':
+        st.caption(f"Text #{colors['text']} · Accent and dividers #{colors['accent']} · Panel #{colors['surface']}")
+    else:
+        st.caption(f"Text #{colors['text']} · Accent #{colors['accent']}")
+    if settings['template'] == 'Word Template':
+        st.caption('The Word template keeps its designed section order. You can hide sections above.')
+    else:
+        settings['student_mode'] = st.checkbox('Student / entry-level emphasis', value=settings['student_mode'], key='layout_student')
     settings['hidden_sections'] = st.multiselect('Hide optional sections', SECTIONS, default=settings['hidden_sections'], key='layout_hidden')
-    with st.expander('Section order'):
-        order = settings['section_order']
-        st.caption('Technical and student templates prioritize their key sections; custom order applies to the remaining sections.')
-        for index, section in enumerate(order):
-            cols = st.columns([3, 1, 1])
-            cols[0].write(section.replace('_', ' ').title())
-            for col, label, offset in ((cols[1], '↑', -1), (cols[2], '↓', 1)):
-                if col.button(label, key=f'layout_order_{section}_{offset}', disabled=not 0 <= index + offset < len(order)):
-                    order[index], order[index + offset] = order[index + offset], order[index]
-                    st.rerun()
+    if settings['template'] != 'Word Template':
+        with st.expander('Section order'):
+            order = settings['section_order']
+            st.caption('Technical and student templates prioritize their key sections; custom order applies to the remaining sections.')
+            for index, section in enumerate(order):
+                cols = st.columns([3, 1, 1])
+                cols[0].write(section.replace('_', ' ').title())
+                for col, label, offset in ((cols[1], '↑', -1), (cols[2], '↓', 1)):
+                    if col.button(label, key=f'layout_order_{section}_{offset}', disabled=not 0 <= index + offset < len(order)):
+                        order[index], order[index + offset] = order[index + offset], order[index]
+                        st.rerun()
 
 
 def analysis_editor():

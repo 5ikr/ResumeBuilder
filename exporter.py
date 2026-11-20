@@ -4,6 +4,8 @@ from fpdf import FPDF
 from preview import resume_blocks, safe_link
 from profiles import normalise_profile
 from resume_styles import RESUME_STYLES
+from resume_themes import DEFAULT_RESUME_THEME, RESUME_THEMES
+from word_template import export_pdf as export_word_template
 
 FONT_DIR = Path(__file__).parent / 'assets' / 'fonts'
 
@@ -20,12 +22,16 @@ class ResumePDF(FPDF):
         self.cell(self.epw, 6, f'Page {self.page_no()}', align='C')
 
 
-def generate_resume_pdf(personal_info, education, experience, font_color=(40, 40, 40), **extra):
+def generate_resume_pdf(personal_info, education, experience, font_color=None, **extra):
     profile = normalise_profile(dict(personal_info=personal_info, education=education, experience=experience, **extra))
     template = profile['settings']['template']
+    theme = RESUME_THEMES.get(profile['settings']['theme'], RESUME_THEMES[DEFAULT_RESUME_THEME])
+    if template == 'Word Template':
+        return export_word_template(profile, profile['settings']['theme'])
     design = RESUME_STYLES[template]
     try:
-        r, g, b = font_color
+        r, g, b = (font_color if font_color is not None else
+                   tuple(int(theme['text'][i:i + 2], 16) for i in (0, 2, 4)))
         rgb = tuple(max(0, min(255, int(c))) for c in (r, g, b))
     except (TypeError, ValueError, OverflowError):
         rgb = (40, 40, 40)
@@ -68,7 +74,10 @@ def generate_resume_pdf(personal_info, education, experience, font_color=(40, 40
         unsupported = {c for c in text if not c.isspace() and ord(c) not in cmap}
         if unsupported:
             raise ValueError('The bundled font does not cover these characters: ' + ' '.join(sorted(unsupported)) + '. Use supported text or configure an appropriate font.')
-        accent = design['accent'] if block.kind in ('name', 'section') else None
+        accent = (tuple(int(theme['accent'][i:i + 2], 16) for i in (0, 2, 4))
+                  if block.kind in ('name', 'section') else None)
+        if accent is None:
+            accent = design['accent']
         pdf.set_text_color(*(accent or rgb))
         indent = 5 if block.kind == 'bullet' else 0
         if block.kind == 'bullet':

@@ -135,6 +135,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent) !import
 .workflow-strip .current { color:#a44425; font-weight:600; }
 [data-testid="stVerticalBlock"]:has(.template-marker.editorial) .st-key-resume_sheet h1 { text-align:center; color:#273e4e; border-bottom:0; }
 [data-testid="stVerticalBlock"]:has(.template-marker.editorial) .st-key-resume_sheet h2 { color:#273e4e; border-top:0; font-family:Georgia,serif !important; font-size:1rem !important; letter-spacing:.03em; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word) .st-key-resume_sheet h1,
+[data-testid="stVerticalBlock"]:has(.template-marker.word) .st-key-resume_sheet h2 { color:#27745c; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word) .st-key-resume_sheet h2 { border-color:#b7d0c2; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word.theme-navy) .st-key-resume_sheet h1,
+[data-testid="stVerticalBlock"]:has(.template-marker.word.theme-navy) .st-key-resume_sheet h2 { color:#365c82; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word.theme-burgundy) .st-key-resume_sheet h1,
+[data-testid="stVerticalBlock"]:has(.template-marker.word.theme-burgundy) .st-key-resume_sheet h2 { color:#8b4352; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word) .st-key-resume_sheet { border-top:4px solid #27745c; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word.theme-navy) .st-key-resume_sheet { border-top-color:#365c82; }
+[data-testid="stVerticalBlock"]:has(.template-marker.word.theme-burgundy) .st-key-resume_sheet { border-top-color:#8b4352; }
 [data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet { padding:1.6rem !important; }
 [data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet h1,
 [data-testid="stVerticalBlock"]:has(.template-marker.compact) .st-key-resume_sheet h3 { font-family:"Segoe UI",Arial,sans-serif !important; }

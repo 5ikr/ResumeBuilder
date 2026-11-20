@@ -86,10 +86,6 @@ for message in ('upload_message', 'json_profile_message'):
     if message in st.session_state:
         level, text = st.session_state[message]
         getattr(st.sidebar, level)(text)
-font_themes = {'Classic Black': (40, 40, 40), 'Professional Blue': (30, 70, 130),
-               'Burnt Amber': (160, 85, 35), 'Forest Green': (35, 100, 65), 'Dark Red': (140, 40, 40)}
-selected_theme = st.session_state.get('saved_pdf_theme', 'Classic Black')
-
 editor, preview = st.columns([1, 1.2], gap='large')
 with editor:
     st.caption({'Edit resume': '01 / BUILD YOUR STORY', 'AI': '02 / REFINE YOUR WRITING', 'Preview & export': '03 / FINISH YOUR RESUME'}[workspace])
@@ -110,12 +106,10 @@ with editor:
         studio_editor()
     else:
         layout_editor()
-        st.session_state.setdefault('pdf_font_theme', selected_theme)
-        selected_theme = st.selectbox('Choose PDF font colour', list(font_themes), key='pdf_font_theme')
-        st.session_state.saved_pdf_theme = selected_theme
         st.info('Review your draft, then generate a PDF below. Empty sections are omitted automatically.')
 
 profile_data = snapshot(st.session_state)
+selected_theme = profile_data['settings']['theme']
 extra = {key: profile_data[key] for key in ('skills', 'projects', 'certifications', 'achievements', 'additional', 'settings')}
 with preview:
     st.caption('LIVE / RESUME PREVIEW')
@@ -123,7 +117,8 @@ with preview:
     st.caption(profile_data['settings']['template'])
     template_class = RESUME_STYLES[profile_data['settings']['template']]['css']
     # CSS selectors use this local marker; resume text always goes through escaped Markdown.
-    st.html(f'<div class="template-marker {template_class}"></div>')
+    theme_class = profile_data['settings']['theme'].lower()
+    st.html(f'<div class="template-marker {template_class} theme-{theme_class}"></div>')
     with st.container(border=True, key='resume_sheet'):
         st.markdown(resume_markdown(st.session_state.personal_info, st.session_state.education,
                                     st.session_state.experience, **extra))
@@ -159,7 +154,7 @@ if workspace == 'Preview & export' and st.button('Generate PDF', type='primary')
     else:
         try:
             pdf_bytes = generate_resume_pdf(st.session_state.personal_info, st.session_state.education,
-                                            st.session_state.experience, font_color=font_themes[selected_theme], **extra)
+                                            st.session_state.experience, **extra)
             st.session_state.generated_pdf = (pdf_bytes, json_data, selected_theme)
             st.success(f'Your resume PDF is ready ({selected_theme}).')
         except (ValueError, OSError) as error:

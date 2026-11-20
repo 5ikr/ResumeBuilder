@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import asdict
 from uuid import uuid4
 from resume_styles import RESUME_STYLES
+from resume_themes import DEFAULT_RESUME_THEME, RESUME_THEMES
 
 from models import (PersonalInfo, Education, Experience, Skill, Project,
                     Certification, Achievement, AdditionalInfo)
@@ -46,6 +47,7 @@ def normalise_profile(data):
     order = list(dict.fromkeys(s for s in order if s in SECTIONS))
     result['settings'] = {
         'template': settings.get('template') if settings.get('template') in TEMPLATES else TEMPLATES[0],
+        'theme': settings.get('theme') if settings.get('theme') in RESUME_THEMES else DEFAULT_RESUME_THEME,
         'section_order': order + [s for s in SECTIONS if s not in order],
         'hidden_sections': [s for s in hidden if s in SECTIONS],
         'student_mode': bool(settings.get('student_mode', False)),
