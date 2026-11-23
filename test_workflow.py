@@ -2,8 +2,8 @@ import unittest
 from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
 from test_navigation import navigate,open_summary_rewrite
-from ai_service import STYLES,STYLE_GUIDANCE,WritingRequest,OpenAIProvider
-from test_nvidia import response
+from ai_service import STYLES,STYLE_GUIDANCE,WritingRequest,NvidiaProvider
+from test_nvidia import completion, response
 
 
 class WorkflowTest(unittest.TestCase):
@@ -16,7 +16,7 @@ class WorkflowTest(unittest.TestCase):
             self.assertFalse(any(b.label=='Generate PDF' for b in app.button))
             app.button(key='continue_workflow').click().run()
             self.assertEqual(app.session_state['workspace_step'],'AI')
-            self.assertTrue(app.selectbox(key='writing_provider'))
+            self.assertTrue(app.selectbox(key='writing_nvidia_choice'))
             app.button(key='continue_workflow').click().run()
             self.assertEqual(app.session_state['workspace_step'],'Preview & export')
             self.assertTrue(any(b.label=='Generate PDF' for b in app.button))
@@ -25,18 +25,18 @@ class WorkflowTest(unittest.TestCase):
             self.assertFalse(app.exception)
             call.assert_not_called()
 
-    def test_provider_and_selected_model_survive_navigation(self):
+    def test_selected_model_survives_navigation(self):
         app=AppTest.from_file('app.py',default_timeout=20).run()
         open_summary_rewrite(app)
-        app.selectbox(key='writing_provider').select('openai').run()
-        app.text_input(key='writing_openai_model').input('example/custom-model').run()
+        app.selectbox(key='writing_nvidia_choice').select('Enter model ID.').run()
+        app.text_input(key='writing_nvidia_custom').input('example/custom-model').run()
         app.selectbox(key='studio_style').select('Career Change').run()
         app.selectbox(key='studio_length').select('Short').run()
         navigate(app,'Education')
         navigate(app,'Preview')
         open_summary_rewrite(app)
-        self.assertEqual(app.selectbox(key='writing_provider').value,'openai')
-        self.assertEqual(app.text_input(key='writing_openai_model').value,'example/custom-model')
+        self.assertEqual(app.selectbox(key='writing_nvidia_choice').value, 'Enter model ID.')
+        self.assertEqual(app.text_input(key='writing_nvidia_custom').value,'example/custom-model')
         self.assertEqual(app.selectbox(key='studio_style').value,'Career Change')
         self.assertEqual(app.selectbox(key='studio_length').value,'Short')
         self.assertFalse(app.exception)
@@ -54,6 +54,6 @@ class WorkflowTest(unittest.TestCase):
 
     def test_all_writing_tones_have_distinct_prompt_guidance(self):
         for style in STYLES:
-            with patch('ai_service.urlopen',return_value=response({'status':'completed','output':[{'content':[{'type':'output_text','text':'{"text":"Built Python tools.","questions":[]}'}]}]})) as call:
-                OpenAIProvider(api_key='test').suggest(WritingRequest('Built Python tools.','projects',style=style))
+            with patch('ai_service.urlopen', return_value=response(completion())) as call:
+                NvidiaProvider(api_key='test').suggest(WritingRequest('Built Python tools.','projects',style=style))
             self.assertIn(STYLE_GUIDANCE[style],call.call_args.args[0].data.decode())

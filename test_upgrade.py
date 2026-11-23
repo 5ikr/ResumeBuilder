@@ -11,7 +11,7 @@ from urllib.error import HTTPError, URLError
 
 import pdfplumber
 from streamlit.testing.v1 import AppTest
-from ai_service import AIError, WritingRequest, OpenAIProvider, improve, validate_suggestion
+from ai_service import AIError, WritingRequest, NvidiaProvider, improve, validate_suggestion
 from analysis_tools import analyze_job, quality_check, completion
 from exporter import generate_resume_pdf
 from models import Skill, Project
@@ -139,8 +139,8 @@ class AITest(unittest.TestCase):
         provider.suggest.assert_not_called()
 
     def test_missing_key(self):
-        with self.assertRaisesRegex(AIError, 'OPENAI_API_KEY'):
-            improve(WritingRequest('Built tools', 'projects'), consent=True, provider=OpenAIProvider(api_key=''))
+        with self.assertRaisesRegex(AIError, 'NVIDIA_API_KEY'):
+            improve(WritingRequest('Built tools', 'projects'), consent=True, provider=NvidiaProvider(api_key=''))
 
     def test_output_validation(self):
         self.assertEqual(validate_suggestion({'text': 'Built Python tools.', 'questions': []}, 'Python tools').text, 'Built Python tools.')
@@ -150,41 +150,28 @@ class AITest(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(AIError):
                 validate_suggestion(invalid, 'Built tools.')
 
-    def test_mocked_provider_success_and_request(self):
-        response = unittest.mock.MagicMock()
-        response.__enter__.return_value.read.return_value = json.dumps({'status': 'completed', 'output': [
-            {'content': [{'type': 'output_text', 'text': json.dumps({'text': 'Developed Python tools.', 'questions': ['What functionality did you implement?']})}]}]}).encode()
-        with patch('ai_service.urlopen', return_value=response) as call:
-            result = improve(WritingRequest('Built Python tools', 'projects'), consent=True, provider=OpenAIProvider(api_key='test-key'))
-        self.assertEqual(result.text, 'Developed Python tools.')
-        request = call.call_args.args[0]
-        body = json.loads(request.data)
-        self.assertFalse(body['store'])
-        self.assertEqual(body['text']['format']['type'], 'json_schema')
-        self.assertNotIn('test-key', request.data.decode())
-
     def test_service_errors_are_safe(self):
         for error in (HTTPError('url', 401, 'secret-value', {}, None), HTTPError('url', 429, 'secret-value', {}, None),
                       URLError('secret-value'), TimeoutError('secret-value')):
             with self.subTest(error=error), patch('ai_service.urlopen', side_effect=error):
                 with self.assertRaises(AIError) as raised:
-                    OpenAIProvider(api_key='secret-value').suggest(WritingRequest('Built tools', 'projects'))
+                    NvidiaProvider(api_key='secret-value').suggest(WritingRequest('Built tools', 'projects'))
                 self.assertNotIn('secret-value', str(raised.exception))
 
     def test_invalid_provider_payload_and_refusal(self):
-        for payload in ([], {'status': 'completed', 'output': ['malformed']}, {'status': 'incomplete'}, {'status': 'completed', 'output': []},
-                        {'status': 'completed', 'output': [{'content': [{'type': 'refusal'}]}]}):
+        for payload in ([], {'choices': ['malformed']}, {'choices': []},
+                        {'choices': [{'finish_reason': 'content_filter', 'message': {'content': None}}]}):
             response = unittest.mock.MagicMock()
             response.__enter__.return_value.read.return_value = json.dumps(payload).encode()
             with patch('ai_service.urlopen', return_value=response), self.assertRaises(AIError):
-                OpenAIProvider(api_key='test').suggest(WritingRequest('Built tools', 'projects'))
+                NvidiaProvider(api_key='test').suggest(WritingRequest('Built tools', 'projects'))
 
     def test_job_requirements_are_not_candidate_evidence(self):
         response = unittest.mock.MagicMock()
-        response.__enter__.return_value.read.return_value = json.dumps({'status': 'completed', 'output': [
-            {'content': [{'type': 'output_text', 'text': json.dumps({'text': 'Built Docker tools for 5 years.', 'questions': []})}]}]}).encode()
+        response.__enter__.return_value.read.return_value = json.dumps({'choices': [{'finish_reason': 'stop', 'message': {
+            'content': json.dumps({'text': 'Built Docker tools for 5 years.', 'questions': []})}}]}).encode()
         with patch('ai_service.urlopen', return_value=response), self.assertRaises(AIError):
-            OpenAIProvider(api_key='test').suggest(WritingRequest('Built tools.', 'projects', context=json.dumps({'existing_entry': {'description': 'Built tools.'}, 'job_description': 'Docker and 5 years required'})))
+            NvidiaProvider(api_key='test').suggest(WritingRequest('Built tools.', 'projects', context=json.dumps({'existing_entry': {'description': 'Built tools.'}, 'job_description': 'Docker and 5 years required'})))
 
 
 class RenderingTest(unittest.TestCase):

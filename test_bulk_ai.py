@@ -2,6 +2,7 @@ from test_navigation import navigate, open_summary_rewrite
 from copy import deepcopy
 from io import BytesIO
 import json
+import os
 import unittest
 from unittest.mock import patch, Mock
 from streamlit.testing.v1 import AppTest
@@ -11,6 +12,7 @@ from profiles import initialise, restore, snapshot, checkpoint, travel
 from test_upgrade import rich_profile
 
 
+@patch.dict(os.environ, {'NVIDIA_API_KEY': 'test-key'})
 class BulkTest(unittest.TestCase):
     def test_every_writing_section_and_protected_fields(self):
         p = rich_profile()

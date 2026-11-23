@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-AI_SETTINGS = {'AI_PROVIDER', 'NVIDIA_API_KEY', 'NVIDIA_MODEL', 'OPENAI_API_KEY', 'OPENAI_MODEL'}
+AI_SETTINGS = {'NVIDIA_API_KEY', 'NVIDIA_MODEL'}
 
 
 def load_local_env(path=None):

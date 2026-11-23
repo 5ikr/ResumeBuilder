@@ -8,7 +8,7 @@ Implemented on `codex/resume-builder-upgrade`, branched from `96c9caf` after fet
 - Project CRUD and reordering, technical stack, dates, contributions, and links.
 - Certifications, achievements, languages, professional links, portfolio, GitHub, LinkedIn, extracurriculars.
 - All sections integrated with session editing, complete v2 JSON, legacy v1 loading, live preview, PDF, and conservative text/PDF parsing where reliable.
-- Modular optional OpenAI writing provider: eight actions, five styles, four length preferences, context-aware prompts, explicit consent, original/suggestion review, accept/reject/regenerate, safe errors, timeout, in-flight protection, structured output and numeric/known-skill guards.
+- Optional NVIDIA NIM writing assistant: eight actions, five styles, four length preferences, context-aware prompts, explicit consent, original/suggestion review, accept/reject/regenerate, safe errors, timeout, in-flight protection, structured output and numeric/known-skill guards.
 - Professional summary generation from entered evidence with contact details excluded; manual editing and review before acceptance.
 - Local Job Match Analyzer: transparent keyword coverage, present/missing terms, relevant entries, guidance, and optional individual AI wording improvements with job context.
 - Separate local quality checker and explicitly defined six-check completion indicator.
@@ -40,7 +40,7 @@ Modified:
 Added:
 
 - `profiles.py`: normalized versioned schema, atomic restoration, snapshots, history, named profiles, entry ordering.
-- `ai_service.py`: provider protocol, OpenAI Responses transport, factual/output validation and safe exceptions.
+- `ai_service.py`: NVIDIA NIM transport, model fallback, factual/output validation and safe exceptions.
 - `ai_ui.py`: opt-in writing controls and suggestion review lifecycle.
 - `analysis_tools.py`: local keyword, quality, and completion logic.
 - `editor_sections.py`: new section editors, summary assistant, template settings and analysis UI.
@@ -63,7 +63,7 @@ Unchanged: `requirements.txt`, `.streamlit/config.toml`, and `test_app.py`. The 
 
 ## Configuration and running
 
-Install `requirements.txt`, then run `python -m streamlit run app.py`. For optional AI, set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in that process's environment before starting. Default model: `gpt-4.1-mini`; select an account-accessible model supporting Responses and structured output. See README for PowerShell examples. No credentials are committed or entered through the app UI.
+Install `requirements.txt`, then run `python -m streamlit run app.py`. For optional AI, set `NVIDIA_API_KEY` and optionally `NVIDIA_MODEL` before starting. See the README for setup and fallback behavior.
 
 ## Deliberate limits and deferred work
 

@@ -3,7 +3,7 @@ from copy import deepcopy
 import json
 import streamlit as st
 from ai_service import (AIError, STYLES, LENGTHS, WritingRequest, improve,
-                        get_provider, default_provider, validate_suggestion)
+                        NvidiaProvider, validate_suggestion)
 from profiles import snapshot, restore
 
 EDITABLE = {
@@ -62,8 +62,9 @@ def validate_batch(text, original):
 
 def improve_batch(original, section, provider, style='Professional', length='Balanced'):
     result = improve(WritingRequest(json.dumps(original, ensure_ascii=False),
-                     'whole-resume batch:' + section, style=style, length=length), consent=True, provider=provider)
-    return validate_batch(result.text, original), result.questions
+                     'whole-resume batch:' + section, style=style, length=length), consent=True,
+                     provider=provider, check=lambda suggestion: validate_batch(suggestion.text, original))
+    return json.loads(result.text), result.questions
 
 
 def apply_review(state):
@@ -84,9 +85,7 @@ def apply_review(state):
 
 def bulk_editor(style=None, length=None):
     profile = snapshot(st.session_state)
-    name = st.session_state.get('writing_provider', default_provider())
-    provider = get_provider(name, st.session_state.get('writing_model'))
-    label = 'NVIDIA NIM' if name == 'nvidia' else 'OpenAI'
+    provider = NvidiaProvider(model=st.session_state.get('writing_model'))
     groups = batches(profile)
     st.caption('Polish your entire resume in one workflow: summary, education details, every job, skills, project titles/descriptions/contributions, achievements, and languages. Contact details, dates, links, employers, degrees, and official certification names stay as entered.')
     style = style or st.selectbox('Writing style', STYLES, key='bulk_style')
@@ -94,12 +93,11 @@ def bulk_editor(style=None, length=None):
     st.caption(f'{sum(len(v) for v in groups.values())} fields in {len(groups)} batches. Requests may take a few minutes. Only the fields below are sent; no contact details or links are included.')
     with st.expander('Review text that will be sent'):
         st.json(groups)
-    st.caption(f'Clicking Improve entire resume sends the displayed fields to {label}.')
-    consent = True
-    if not provider.api_key.strip():
+    st.caption('Improve entire resume sends the displayed fields to NVIDIA NIM, including backup attempts.')
+    if not provider.api_key:
         st.info(f'Set {provider.key_variable} to enable AI writing.')
     if st.button('Improve entire resume', type='primary', key='bulk_generate',
-                 disabled=not consent or not groups or not provider.api_key.strip() or not st.session_state.get('writing_model', provider.model).strip() or st.session_state.get('bulk_busy', False)):
+                 disabled=not groups or not provider.api_key or st.session_state.get('bulk_busy', False)):
         st.session_state.bulk_busy = True
         # A fresh request replaces previous proposals, never current resume data.
         st.session_state.pop('bulk_review', None)
@@ -115,7 +113,7 @@ def bulk_editor(style=None, length=None):
                 except AIError as error:
                     errors.append(f'{section}: {error}')
             st.session_state.bulk_review = dict(original=profile, changes=changes, errors=errors,
-                                                 questions=questions, destination=(name, provider.model), preferences=(style, length))
+                                                 questions=questions, destination=provider.models, preferences=(style, length))
             progress.progress(1., text='Review your proposed improvements below.')
         finally:
             st.session_state.bulk_busy = False
@@ -123,10 +121,10 @@ def bulk_editor(style=None, length=None):
         st.success(st.session_state.pop('bulk_message'))
     review = st.session_state.get('bulk_review')
     if review:
-        stale = review['original'] != profile or review['destination'] != (name, provider.model)
+        stale = review['original'] != profile or review['destination'] != provider.models
         stale = stale or review.get('preferences', (style, length)) != (style, length)
         if stale:
-            st.warning('Your resume or AI provider/model changed. Generate a fresh review before applying.')
+            st.warning('Your resume or preferred NVIDIA model changed. Generate a fresh review before applying.')
         for error in review['errors']:
             st.warning(error)
         for question in dict.fromkeys(review['questions']):

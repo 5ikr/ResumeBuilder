@@ -96,43 +96,24 @@ English, French
 
 Freeform new-section paragraphs, multi-column PDFs, and arbitrary professional-link layouts are not reliably reconstructed. Use JSON for exact restoration of every field. Additional Information is edited manually; a Languages heading imports reliably.
 
-## NVIDIA NIM setup
+## Optional AI writing with NVIDIA NIM
 
-Your existing NVIDIA Build API key works with the NVIDIA provider. A separate key per model is not required; model access still depends on your account.
+Set your NVIDIA Build key in the terminal that starts Streamlit, then restart the app:
 
 ```powershell
 $env:NVIDIA_API_KEY = 'your-nvidia-key'
-$env:AI_PROVIDER = 'nvidia'
 python -m streamlit run app.py
 ```
 
-Open **AI → Provider & model settings**. Select **NVIDIA NIM**, then use the default text model or click **Load NVIDIA models** and select a text/chat model from the catalog. No model download is needed. The catalog may also list models unsuitable for writing; listing does not guarantee inference access. If a model cannot return a valid suggestion, choose another. A custom model ID is also supported. Optionally set `NVIDIA_MODEL` before starting to choose the initial model; the default is `nvidia/nemotron-3.5-lightning-30b-a3b`.
+The app and `check_nvidia.py` also load `NVIDIA_API_KEY` and optional `NVIDIA_MODEL` from a Git-ignored local `.env` file. Process environment variables take precedence. For deployment, set the key in your host's secrets settings.
 
-The key is read only from the server environment and is not entered in the interface, saved in profiles, or shown in errors. Restart Streamlit after setting environment variables. If NVIDIA_API_KEY is set, NVIDIA is selected by default unless AI_PROVIDER explicitly selects `openai` or `nvidia`.
-
-The provider calls NVIDIA's [hosted Chat Completions endpoint](https://docs.api.nvidia.com/nim/reference/llm-apis). It requests a JSON suggestion through instructions and validates the response locally, allowing models without native JSON-schema response formatting. Unsupported output, incomplete responses, authentication/access errors, rate limits, and connectivity failures leave your original text intact. There is no silent provider fallback or automatic retry.
-
-Loading the catalog sends only your API credential to NVIDIA, never resume content. Generating a suggestion sends the displayed text/context to the selected provider after explicit consent. Changing provider or model clears consent and makes old suggestions stale. All original factual guards and individual accept/reject controls apply to both providers. Neither NVIDIA nor OpenAI is called automatically during editing or navigation.
-
-## Optional AI writing assistant
-
-`ai_service.py` separates the provider interface, requests, response validation, and OpenAI transport from Streamlit. It uses the [OpenAI Responses API with structured output](https://developers.openai.com/api/docs/guides/structured-outputs), through Python's standard library, without adding an SDK dependency.
-
-Set environment variables **in the terminal that starts Streamlit**, then restart the app:
-
-```powershell
-$env:OPENAI_API_KEY = 'your-api-key'
-$env:OPENAI_MODEL = 'gpt-4.1-mini'  # Optional; choose a Responses / structured-output capable model available to your account.
-python -m streamlit run app.py
-```
-
-The app and `check_nvidia.py` automatically load AI settings from a local `.env` file in the project root. Existing process environment variables take precedence. This file stays on your machine and is ignored by Git; do not share it. Never put keys in source code or profiles. `.env` and `.streamlit/secrets.toml` are ignored by Git; the integration reads process environment variables and the ignored local `.env` file. Keys are never shown in the UI, sent in profile exports, or included in error messages.
+Open **AI → NVIDIA NIM model settings** to select a preferred model. By default the app tries Nemotron 3.5 Lightning, then Nemotron 3.5 Bolt if the first model is unavailable, times out, hits a rate limit, or returns an invalid suggestion. You can choose a catalog model or enter a custom ID to try it first. Catalog listing alone does not guarantee account access. Loading the catalog sends no resume text.
 
 Use **AI → Rewrite a field**, then select a section, entry, and field. Expand **AI Improve** to choose an action. Actions: improve wording, make concise, expand, make more technical, make achievement-oriented, fix grammar, convert to bullets, and simplify. Set the shared writing style and length at the top of AI. Tones include Professional, Concise, Technical, Achievement-oriented, ATS-friendly, Confident, Student / Entry-level, Career Change, and Plain English. Length options are Very concise, Short, Balanced (default), and Detailed. These choices persist across tools and navigation; they are writing tones, separate from PDF templates.
 
 **AI → Professional Summary → Summary assistant** generates a summary using existing education, experience, projects, skills, achievements, certifications, and headline. It avoids sending contact details. Change tone/length and regenerate, edit manually, or reject the result.
 
-Before each request, the app displays source text and any context. You must explicitly consent to sending that information to the selected provider (**OpenAI** or **NVIDIA NIM**). Clicking Generate is the only way to initiate a call. The UI uses an in-flight guard, does not automatically retry, and does not call the API while typing or navigating. Regenerate is an intentional new request and may incur another charge. Requests have a timeout. OpenAI requests set `store: false`; NVIDIA uses its Chat Completions API. Provider-specific data policies still apply. Job-aligned rewriting also sends the displayed job description and current entry.
+The app displays the source text and any context before you click Generate. Clicking authorizes the request and any backup attempts through NVIDIA NIM. Attempts use the same input, and additional requests may count toward your account limits. The UI prevents simultaneous submissions and makes no generation calls while typing or navigating. Job-aligned rewriting also sends the displayed job description and current entry.
 
 Original and suggestion are displayed separately. **Accept** applies one suggestion; **Reject** discards it. Changed source text requires regeneration. Prompts prohibit invented facts, and validation rejects empty/malformed responses, unsupported new numeric claims, and added skills from the checked vocabulary. The assistant asks for details when input is vague. No automated validator can guarantee semantic truth: review all experience, outcomes, titles, qualifications, and technical claims before accepting. Length is a generation preference rather than forced word padding.
 
@@ -165,15 +146,20 @@ To restart, press Ctrl+C in the running Streamlit terminal, then run `python -m 
 
 ## Improve the entire resume
 
-Uploading a file imports the original text. To polish every writing section, select **AI**, then choose **Improve entire resume** from **AI tool**. Review the text that will be sent, choose a style and description length, give consent to the selected provider, and click **Improve entire resume**. This covers the existing summary/headline, education details, every job's bullets, skills/categories/proficiency, project titles/descriptions/technologies/contributions, achievement titles/descriptions, languages, and extracurriculars. Empty fields are skipped rather than invented. Contact information, dates, links, employer/degree names and official certification names are preserved.
+Uploading a file imports the original text. To polish every writing section, select **AI**, then choose **Improve entire resume** from **AI tool**. Review the text that will be sent, choose a style and description length, and click **Improve entire resume**. This covers the existing summary/headline, education details, every job's bullets, skills/categories/proficiency, project titles/descriptions/technologies/contributions, achievement titles/descriptions, languages, and extracurriculars. Empty fields are skipped rather than invented. Contact information, dates, links, employer/degree names and official certification names are preserved.
 
-The service sends bounded batches and shows progress; a large resume may require several requests and incur provider charges. No calls happen automatically on upload. It validates complete field mappings and checks each proposed value for unsupported numbers and known skills, retaining Basic proficiency qualifiers. Failed batches are reported and their original text remains intact. Review the original/improved comparisons, then click **Apply all improvements** to update all successful suggestions together. **Discard suggestions** keeps your draft. Editing the resume or switching provider/model makes a pending review stale. Undo can restore the previous draft after applying. All changes flow to the live preview, JSON profiles, and regenerated PDFs.
+The service sends bounded batches and shows progress; a large resume may require several requests and incur provider charges. No calls happen automatically on upload. It validates complete field mappings and checks each proposed value for unsupported numbers and known skills, retaining Basic proficiency qualifiers. Failed batches are reported and their original text remains intact. Review the original/improved comparisons, then click **Apply all improvements** to update all successful suggestions together. **Discard suggestions** keeps your draft. Editing the resume or switching the preferred model makes a pending review stale. Undo can restore the previous draft after applying. All changes flow to the live preview, JSON profiles, and regenerated PDFs.
 
 ## Streamlined workflow
 
 1. **Edit resume**: import a resume or JSON profile, choose a section from the section selector, and enter or update your information. AI controls no longer clutter editing forms.
+<<<<<<< HEAD
 2. **AI**: all provider/model settings, shared tone/length controls, whole-resume polishing, summary generation, individual field rewrites, quality checks, and Job Match Analyzer live here. Suggestions always require consent and review. Provider/model and tone/length selections survive navigation.
 3. **Preview & export**: choose the supplied Word layout or a built-in style, select a coordinated color theme, hide sections, and generate your PDF. Template and theme choices are included in JSON profiles.
+=======
+2. **AI**: NVIDIA model settings, shared tone/length controls, whole-resume polishing, summary generation, individual field rewrites, quality checks, and Job Match Analyzer live here. Suggestions always require consent and review. Model and tone/length selections survive navigation.
+3. **Preview & export**: choose one of five resume styles, set PDF text colour, hide/reorder sections, choose student emphasis, and generate your PDF. Template choices affect both preview and PDF and are included in JSON profiles.
+>>>>>>> 1fe7dd2 (Use NVIDIA NIM with model fallback and structured batch responses)
 
 Use the Continue button to move forward, or Skip AI and preview when you prefer manual writing. You can return to any step using the three-item sidebar. The last editing section is remembered. Writing preferences remain separate from resume data and are not exported with candidate profiles. No API request is triggered by navigating between steps.
 

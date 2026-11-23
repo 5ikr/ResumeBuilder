@@ -1,10 +1,10 @@
-"""Provider-independent writing requests with explicit consent and reviewed results."""
+"""NVIDIA NIM writing requests with explicit consent and reviewed results."""
 from dataclasses import dataclass
+from http.client import HTTPException
 import json
 import os
 import re
-from typing import Protocol
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from analysis_tools import SKILL_TERMS, contains
 
@@ -46,10 +46,6 @@ class Suggestion:
     questions: tuple[str, ...] = ()
 
 
-class WritingProvider(Protocol):
-    def suggest(self, request: WritingRequest) -> Suggestion: ...
-
-
 def validate_suggestion(data, source):
     if not isinstance(data, dict) or set(data) != {'text', 'questions'}:
         raise AIError('The AI returned an invalid suggestion. Please try again.')
@@ -73,26 +69,27 @@ def validate_suggestion(data, source):
     return Suggestion(text.strip(), tuple(questions))
 
 
-class OpenAIProvider:
-    key_variable = 'OPENAI_API_KEY'
+NVIDIA_DEFAULT_MODEL = 'nvidia/nemotron-3.5-lightning-30b-a3b'
+NVIDIA_BACKUP_MODEL = 'nvidia/nemotron-3.5-bolt-e4b'
+NIM_API = 'https://integrate.api.nvidia.com/v1'
+
+
+class NvidiaProvider:
+    """Try a bounded list of NVIDIA models and reuse the last successful one within a run."""
+    key_variable = 'NVIDIA_API_KEY'
+
     def __init__(self, api_key=None, model=None):
-        self.api_key = api_key if api_key is not None else os.getenv('OPENAI_API_KEY', '')
-        self.model = model or os.getenv('OPENAI_MODEL', 'gpt-4.1-mini')
+        self.api_key = (api_key if api_key is not None else os.getenv(self.key_variable, '')).strip()
+        self.model = (model or os.getenv('NVIDIA_MODEL', '')).strip() or NVIDIA_DEFAULT_MODEL
+        self.models = tuple(dict.fromkeys((self.model, NVIDIA_DEFAULT_MODEL, NVIDIA_BACKUP_MODEL)))
+        self.last_model = None
+        self.account_error = None
 
-    def make_request(self, body):
-        return Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(),
-                       headers={'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'})
-
-    def read_output(self, payload):
-        if payload.get('status') != 'completed':
-            raise AIError('The AI could not complete this request. Try shorter source text.')
-        content = [c['text'] for item in payload.get('output', []) for c in item.get('content', [])
-                   if c.get('type') == 'output_text']
-        return json.loads(''.join(content))
-
-    def suggest(self, request):
-        if not self.api_key.strip():
+    def suggest(self, request, *, check=None):
+        if not self.api_key:
             raise AIError(f'AI writing is unavailable. Configure {self.key_variable}; all editing and exports still work.')
+        if self.account_error:
+            raise AIError(self.account_error)
         if not request.text.strip() or len(request.text) + len(request.context) > 40000:
             raise AIError('Enter source information first (up to 40,000 characters).')
         if request.action not in ACTIONS + ['Generate summary'] or request.style not in STYLES or request.length not in LENGTHS:
@@ -117,33 +114,22 @@ class OpenAIProvider:
                 'fix capitalization and grammar, and replace informal wording with clear professional language. '
                 'Keep Basic/Beginner qualifications; never upgrade proficiency. Preserve each field meaning separately. '
                 'Do not move facts between fields. Leave already-correct names unchanged. '
-                'Return text as a JSON-encoded dictionary with EXACTLY the same keys and string values. '
+                'Return text as a JSON object with EXACTLY the same keys and string values. '
                 'Never omit a field. Length preferences apply per description, not to the entire dictionary. '
                 'Do not truncate lists or remove technical details. Questions remain in the outer questions array.'
             )
         schema = {'type': 'object', 'properties': {'text': {'type': 'string'},
                   'questions': {'type': 'array', 'items': {'type': 'string'}}},
                   'required': ['text', 'questions'], 'additionalProperties': False}
-        body = {'model': self.model, 'store': False, 'instructions': instructions,
-                'input': json.dumps(request.__dict__, ensure_ascii=False), 'max_output_tokens': 1800,
-                'text': {'format': {'type': 'json_schema', 'name': 'resume_suggestion', 'strict': True, 'schema': schema}}}
-        http_request = self.make_request(body)
-        try:
-            with urlopen(http_request, timeout=35) as response:
-                payload = json.loads(response.read(1_000_000))
-            data = self.read_output(payload)
-        except HTTPError as error:
-            if error.code == 410:
-                raise AIError('This model endpoint has been retired. Choose another model in AI settings; your key may still be valid.') from None
-            if error.code == 429:
-                raise AIError('AI request limit reached. Please wait before trying again.') from None
-            raise AIError('AI request failed. Check the configured key, model, and account access.') from None
-        except (URLError, TimeoutError, OSError):
-            raise AIError('AI service could not be reached. Please try again later.') from None
-        except AIError:
-            raise
-        except (ValueError, KeyError, TypeError, AttributeError, IndexError):
-            raise AIError('AI service returned an unreadable response. Please try again.') from None
+        batch = request.section.startswith('whole-resume batch:')
+        if batch:
+            fields = json.loads(request.text)
+            schema['properties']['text'] = {
+                'type': 'object',
+                'properties': {key: {'type': 'string'} for key in fields},
+                'required': list(fields),
+                'additionalProperties': False,
+            }
         evidence = request.text
         if request.context:
             try:
@@ -153,62 +139,69 @@ class OpenAIProvider:
                     evidence += '\n' + json.dumps(context_data, ensure_ascii=False)
             except (ValueError, TypeError):
                 pass
-        return validate_suggestion(data, evidence)
 
 
-NVIDIA_DEFAULT_MODEL = 'nvidia/nemotron-3.5-lightning-30b-a3b'
-
-
-class NvidiaProvider(OpenAIProvider):
-    """NVIDIA-hosted NIM Chat Completions, sharing the same factual guards."""
-    key_variable = 'NVIDIA_API_KEY'
-
-    def __init__(self, api_key=None, model=None):
-        self.api_key = api_key if api_key is not None else os.getenv(self.key_variable, '')
-        self.model = model or os.getenv('NVIDIA_MODEL', NVIDIA_DEFAULT_MODEL)
-
-    def make_request(self, body):
-        schema = body['text']['format']['schema']
-        instructions = body['instructions'] + (
-            ' Return ONLY a JSON object matching this schema, without markdown fences, reasoning or commentary: '
+        instructions += (
+            ' Return only a JSON object matching this schema, without markdown fences or commentary: '
             + json.dumps(schema))
-        # Prompt JSON rather than force a response_format unsupported by some NIM models.
-        nim_body = {'model': self.model, 'messages': [
-            {'role': 'system', 'content': instructions},
-            {'role': 'user', 'content': body['input']}],
-            'max_tokens': 1800, 'temperature': 0.3, 'stream': False}
-        if self.model == NVIDIA_DEFAULT_MODEL:
-            nim_body['chat_template_kwargs'] = {'enable_thinking': False}
-        return Request('https://integrate.api.nvidia.com/v1/chat/completions',
-                       data=json.dumps(nim_body).encode(),
-                       headers={'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'})
+        messages = [{'role': 'system', 'content': instructions},
+                    {'role': 'user', 'content': json.dumps(request.__dict__, ensure_ascii=False)}]
+        models = self.models if self.last_model is None else tuple(dict.fromkeys((self.last_model, *self.models)))
+        failures = []
+        for model in models:
+            try:
+                data = self.complete(model, messages, schema)
+                if batch and isinstance(data, dict) and isinstance(data.get('text'), dict):
+                    data = dict(data, text=json.dumps(data['text'], ensure_ascii=False))
+                result = validate_suggestion(data, evidence)
+                if check is not None:
+                    check(result)
+            except HTTPError as error:
+                status = error.code
+                error.close()
+                self.account_error = {
+                    401: 'NVIDIA rejected the API key. Check that NVIDIA_API_KEY is valid.',
+                    402: 'NVIDIA rejected the request for billing or quota reasons. Check your NVIDIA account.',
+                }.get(status)
+                if self.account_error:
+                    raise AIError(self.account_error) from None
+                hint = {403: 'model access denied', 404: 'model unavailable', 410: 'model retired',
+                        429: 'rate or quota limit reached'}.get(status)
+                failures.append(f'{model}: {hint or f"HTTP {status}"}')
+            except (OSError, HTTPException):
+                failures.append(f'{model}: connection failed or timed out')
+            except AIError as error:
+                failures.append(f'{model}: {error}')
+            except (ValueError, KeyError, TypeError, AttributeError, IndexError):
+                failures.append(f'{model}: unreadable response')
+            else:
+                self.last_model = model
+                return result
+        raise AIError('NVIDIA could not produce a valid suggestion. ' + ' | '.join(failures))
+
+    def complete(self, model, messages, schema):
+        body = {'model': model, 'messages': messages, 'max_tokens': 2400,
+                'temperature': 0.3, 'stream': False,
+                'response_format': {'type': 'json_schema', 'json_schema': {
+                    'name': 'resume_suggestion', 'strict': True, 'schema': schema}}}
+        if model in (NVIDIA_DEFAULT_MODEL, NVIDIA_BACKUP_MODEL):
+            body['chat_template_kwargs'] = {'enable_thinking': False}
+        request = Request(NIM_API + '/chat/completions', data=json.dumps(body).encode(),
+                          headers={'Authorization': 'Bearer ' + self.api_key,
+                                   'Content-Type': 'application/json'})
+        with urlopen(request, timeout=20) as response:
+            return self.read_output(json.loads(response.read(1_000_000)))
 
     def read_output(self, payload):
         choice = payload['choices'][0]
         if choice.get('finish_reason') != 'stop':
-            raise AIError('NVIDIA did not finish the suggestion. Try shorter input or another model.')
+            raise AIError('NVIDIA did not finish the suggestion. The response was incomplete.')
         content = choice['message']['content']
         if not isinstance(content, str):
-            raise AIError('NVIDIA returned an invalid suggestion. Try another text model.')
+            raise AIError('NVIDIA returned no usable suggestion.')
         # Accept a single JSON code fence, but never scrape arbitrary surrounding prose.
         content = re.sub(r'^```(?:json)?\s*\n([\s\S]*?)\n```$', r'\1', content.strip())
         return json.loads(content)
-
-
-def default_provider():
-    configured = os.getenv('AI_PROVIDER', '').lower().strip()
-    if configured in ('nvidia', 'openai'):
-        return configured
-    return 'nvidia' if os.getenv('NVIDIA_API_KEY', '').strip() else 'openai'
-
-
-def get_provider(name=None, model=None):
-    name = name or default_provider()
-    if name == 'nvidia':
-        return NvidiaProvider(model=model)
-    if name == 'openai':
-        return OpenAIProvider(model=model)
-    raise AIError('Choose NVIDIA NIM or OpenAI as the AI provider.')
 
 
 def list_nvidia_models():
@@ -216,7 +209,7 @@ def list_nvidia_models():
     key = os.getenv('NVIDIA_API_KEY', '').strip()
     if not key:
         raise AIError('Set NVIDIA_API_KEY before loading the model catalog.')
-    request = Request('https://integrate.api.nvidia.com/v1/models',
+    request = Request(NIM_API + '/models',
                       headers={'Authorization': 'Bearer ' + key})
     try:
         with urlopen(request, timeout=20) as response:
@@ -232,7 +225,8 @@ def list_nvidia_models():
         raise AIError('Could not load NVIDIA models. Check your key and connection, or enter a model ID manually.') from None
 
 
-def improve(request, *, consent=False, provider=None):
+def improve(request, *, consent=False, provider=None, check=None):
     if not consent:
-        raise AIError('Consent is required before sending resume text to the selected AI provider.')
-    return (provider or get_provider()).suggest(request)
+        raise AIError('Consent is required before sending resume text to NVIDIA NIM.')
+    provider = provider or NvidiaProvider()
+    return provider.suggest(request) if check is None else provider.suggest(request, check=check)

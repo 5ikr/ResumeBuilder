@@ -8,8 +8,8 @@ from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError, URLError
 from streamlit.testing.v1 import AppTest
-from ai_service import (AIError, NvidiaProvider, OpenAIProvider, WritingRequest,
-                        get_provider, list_nvidia_models, improve)
+from ai_service import (AIError, NvidiaProvider, WritingRequest,
+                        list_nvidia_models, improve)
 
 
 def response(payload):
@@ -26,7 +26,7 @@ class NvidiaTest(unittest.TestCase):
     def test_current_default_and_smoke_script(self):
         import check_nvidia
         from ai_service import NVIDIA_DEFAULT_MODEL
-        with patch.dict(os.environ, {'NVIDIA_API_KEY': 'private-test', 'NVIDIA_MODEL': NVIDIA_DEFAULT_MODEL}), patch('sys.argv', ['check_nvidia.py']), patch('check_nvidia.urlopen', return_value=response(completion())) as call, redirect_stdout(StringIO()) as output:
+        with patch.dict(os.environ, {'NVIDIA_API_KEY': 'private-test', 'NVIDIA_MODEL': NVIDIA_DEFAULT_MODEL}), patch('sys.argv', ['check_nvidia.py']), patch('ai_service.urlopen', return_value=response(completion())) as call, redirect_stdout(StringIO()) as output:
             self.assertEqual(check_nvidia.main(), 0)
             body = json.loads(call.call_args.args[0].data)
             self.assertEqual(body['model'], NVIDIA_DEFAULT_MODEL)
@@ -37,9 +37,9 @@ class NvidiaTest(unittest.TestCase):
 
     def test_smoke_script_retirement_and_model_override(self):
         import check_nvidia
-        with patch.dict(os.environ, {'NVIDIA_API_KEY': 'private-test'}), patch('sys.argv', ['check_nvidia.py', '--model', 'example/retired']), patch('check_nvidia.urlopen', side_effect=HTTPError('url', 410, 'private-test', {}, None)) as call, redirect_stdout(StringIO()) as output:
+        with patch.dict(os.environ, {'NVIDIA_API_KEY': 'private-test'}), patch('sys.argv', ['check_nvidia.py', '--model', 'example/retired']), patch('ai_service.urlopen', side_effect=HTTPError('url', 410, 'private-test', {}, None)) as call, redirect_stdout(StringIO()) as output:
             self.assertEqual(check_nvidia.main(), 1)
-            self.assertEqual(json.loads(call.call_args.args[0].data)['model'], 'example/retired')
+            self.assertEqual(json.loads(call.call_args_list[0].args[0].data)['model'], 'example/retired')
             self.assertIn('retired', output.getvalue())
             self.assertNotIn('private-test', output.getvalue())
 
@@ -71,9 +71,6 @@ class NvidiaTest(unittest.TestCase):
             self.assertEqual(NvidiaProvider(api_key='test').suggest(WritingRequest('Built Python tools.', 'projects')).text, 'Developed Python tools.')
 
     def test_missing_key_consent_and_provider_selection(self):
-        with patch.dict(os.environ, {'NVIDIA_API_KEY':'test', 'AI_PROVIDER':'nvidia'}):
-            self.assertIsInstance(get_provider(), NvidiaProvider)
-            self.assertIsInstance(get_provider('openai'), OpenAIProvider)
         with patch('ai_service.urlopen') as call:
             with self.assertRaisesRegex(AIError, 'NVIDIA_API_KEY'):
                 NvidiaProvider(api_key='').suggest(WritingRequest('Built tools.', 'projects'))
@@ -86,6 +83,49 @@ class NvidiaTest(unittest.TestCase):
             with patch('ai_service.urlopen', side_effect=error), self.assertRaises(AIError) as raised:
                 NvidiaProvider(api_key='private-key').suggest(WritingRequest('Built tools.', 'projects'))
             self.assertNotIn('private-key',str(raised.exception))
+
+    def test_retired_model_falls_back_and_reuses_working_model(self):
+        provider = NvidiaProvider(api_key='test', model='example/retired')
+        request = WritingRequest('Built Python tools.', 'projects')
+        with patch('ai_service.urlopen', side_effect=[
+            HTTPError('url', 410, '', {}, None), response(completion()), response(completion())
+        ]) as call:
+            provider.suggest(request)
+            provider.suggest(request)
+        used = [json.loads(request.args[0].data)['model'] for request in call.call_args_list]
+        self.assertEqual(used, [provider.model, provider.models[1], provider.models[1]])
+        self.assertEqual(provider.last_model, provider.models[1])
+
+    def test_invalid_key_stops_before_fallback(self):
+        error = HTTPError('url', 401, 'private-key', {}, None)
+        with patch('ai_service.urlopen', side_effect=error) as call:
+            with self.assertRaisesRegex(AIError, 'NVIDIA_API_KEY'):
+                NvidiaProvider(api_key='private-key').suggest(WritingRequest('Built tools.', 'projects'))
+        call.assert_called_once()
+
+    def test_batch_schema_requires_exact_fields_and_accepts_object(self):
+        from bulk_ai import improve_batch
+        fields = {'personal_info/headline': 'Python student'}
+        payload = completion()
+        payload['choices'][0]['message']['content'] = json.dumps(
+            {'text': fields, 'questions': []})
+        with patch('ai_service.urlopen', return_value=response(payload)) as call:
+            result, _ = improve_batch(fields, 'personal_info', NvidiaProvider(api_key='test'))
+        self.assertEqual(result, fields)
+        schema = json.loads(call.call_args.args[0].data)['response_format']['json_schema']['schema']
+        self.assertEqual(schema['properties']['text']['required'], list(fields))
+        self.assertFalse(schema['properties']['text']['additionalProperties'])
+
+    def test_bad_batch_mapping_tries_next_model(self):
+        from bulk_ai import improve_batch
+        provider = NvidiaProvider(api_key='test', model='example/preferred')
+        field = 'projects/item/description'
+        original = {field: 'Built Python tools.'}
+        valid = {field: 'Developed Python tools.'}
+        with patch('ai_service.urlopen', side_effect=[response(completion('{}')),
+                                                    response(completion(json.dumps(valid)))]) as call:
+            self.assertEqual(improve_batch(original, 'projects', provider), (valid, ()))
+        self.assertEqual(call.call_count, 2)
 
     def test_catalog_lookup_and_failures(self):
         with patch.dict(os.environ, {'NVIDIA_API_KEY':'test'}):
@@ -102,7 +142,7 @@ class NvidiaTest(unittest.TestCase):
             app = AppTest.from_file('app.py', default_timeout=15).run()
             self.assertFalse(app.exception)
             open_summary_rewrite(app)
-            self.assertEqual(app.selectbox(key='writing_provider').value,'nvidia')
+            self.assertTrue(app.selectbox(key='writing_nvidia_choice'))
             network.assert_not_called()
             app.text_area(key='personal_summary').input('Built Python tools.').run()
 
@@ -111,12 +151,12 @@ class NvidiaTest(unittest.TestCase):
             app.selectbox(key='writing_nvidia_choice').select('example/chat').run()
 
 
-            with patch('ai_service.urlopen',return_value=response(completion())):
+            with patch('ai_service.urlopen', side_effect=[URLError('timeout'), response(completion())]) as call:
                 app.button(key='ai_generate_personal_summary').click().run()
+            self.assertEqual(call.call_count, 2)
             self.assertEqual(app.text_area(key='personal_summary').value,'Built Python tools.')
             app.button(key='ai_accept_personal_summary').click().run()
             self.assertEqual(app.text_area(key='personal_summary').value,'Developed Python tools.')
-            app.selectbox(key='writing_provider').select('openai').run()
 
             from profiles import snapshot
             self.assertNotIn('test-private',json.dumps(snapshot(app.session_state)))

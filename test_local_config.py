@@ -14,7 +14,7 @@ class LocalConfigTest(unittest.TestCase):
             with patch.dict(os.environ, {}, clear=True):
                 load_local_env(path)
                 self.assertEqual(os.environ['NVIDIA_API_KEY'], 'test-only')
-                self.assertEqual(os.environ['AI_PROVIDER'], 'nvidia')
+                self.assertNotIn('AI_PROVIDER', os.environ)
                 self.assertNotIn('PATH', os.environ)
 
     def test_shell_settings_take_precedence(self):
