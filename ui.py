@@ -49,6 +49,12 @@ def enable_enter_to_next_input():
                     if (idx === -1 || idx >= inputs.length - 1) {
                         return;
                     }
+                    
+                    const inputs = getFocusableInputs();
+                    const idx = inputs.indexOf(target);
+                    if (idx === -1 || idx >= inputs.length - 1) {
+                        return;
+                    }
 
                     const nextInput = inputs[idx + 1];
                     // Defer slightly so Streamlit can process the Enter submission/rerun cleanly
