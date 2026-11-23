@@ -23,8 +23,6 @@ def _register_namespaces(contents):
             ET.register_namespace(prefix or '', uri)
 
 
-def _text(node):
-    return ''.join(item.text or '' for item in node.iter(f'{{{W}}}t'))
 
 
 def _set_control(control, value):
