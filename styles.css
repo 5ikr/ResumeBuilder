@@ -92,13 +92,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent) !import
   box-shadow: none !important;
   background: #fff;
 }
-.st-key-resume_sheet { background: #fff; border: 1px solid var(--line); border-radius: 2px; padding: 2.5rem !important; min-height: 640px; }
-.st-key-resume_sheet h1 { font-size: 2.4rem; border-bottom: 1px solid var(--line); padding-bottom: .8rem; }
-.st-key-resume_sheet h2 { font-family: "Segoe UI", Arial, sans-serif !important; text-transform: uppercase; letter-spacing: .12em; font-size: .7rem !important; font-weight: 600 !important; border-top: 1px solid var(--line); padding-top: 1.3rem; margin-top: 1.8rem; }
-.st-key-resume_sheet h3 { font-size: 1.2rem !important; }
-.st-key-resume_sheet p, .st-key-resume_sheet li { font-size: .88rem; }
-[data-testid="stAlert"] { border-radius: 3px; background: #f6f5f1; color: var(--ink); border: 1px solid var(--line); border-left: 3px solid var(--accent); }
-[data-testid="stAlert"] svg { color: var(--accent); }
+
 
 @media (max-width: 900px) {
   .block-container { padding: 4.5rem 1.5rem 2rem; }
