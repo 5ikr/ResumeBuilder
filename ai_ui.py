@@ -4,32 +4,6 @@ import streamlit as st
 from ai_service import ACTIONS, AIError, NvidiaProvider, WritingRequest, improve, list_nvidia_models
 
 
-def ai_settings():
-    with st.expander('NVIDIA NIM model settings'):
-        if st.button('Load NVIDIA models', key='load_nvidia_models'):
-            try:
-                with st.spinner('Loading model catalog.'):
-                    st.session_state.nvidia_models = list_nvidia_models()
-            except AIError as error:
-                st.error(str(error))
-        saved = st.session_state.get('writing_config', {})
-        default = NvidiaProvider()
-        if 'writing_nvidia_choice' not in st.session_state:
-            st.session_state.writing_nvidia_choice = saved.get('nvidia_choice', default.model)
-            st.session_state.writing_nvidia_custom = saved.get('nvidia_custom', '')
-        custom_option = 'Enter model ID.'
-        models = dict.fromkeys([*default.models, *st.session_state.get('nvidia_models', []),
-                               st.session_state.writing_nvidia_choice, custom_option])
-        selected = st.selectbox('Preferred NVIDIA model', list(models), key='writing_nvidia_choice')
-        custom = saved.get('nvidia_custom', '')
-        if selected == custom_option:
-            st.session_state.setdefault('writing_nvidia_custom', custom)
-            custom = st.text_input('Custom NVIDIA model ID', key='writing_nvidia_custom')
-        st.session_state.writing_model = custom.strip() if selected == custom_option else selected
-        st.session_state.writing_config = dict(nvidia_choice=selected, nvidia_custom=custom)
-        st.caption('NVIDIA NIM automatically tries backup models if the preferred model fails. '
-                   'Loading the catalog sends no resume text.')
-
 
 def accept_suggestion(key, data, field):
     suggestion = st.session_state.get('ai_result_' + key)
